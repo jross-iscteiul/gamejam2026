@@ -1,0 +1,128 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/player_test/test_player.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://tests/player_test/pixel_block.gd" id="3_block"]
+
+[sub_resource type="Gradient" id="Gradient_sky"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0, 0.3, 0.55, 0.75, 0.9)
+colors = PackedColorArray(0.07, 0.08, 0.13, 1, 0.09, 0.1, 0.16, 1, 0.11, 0.12, 0.19, 1, 0.13, 0.14, 0.22, 1, 0.16, 0.17, 0.26, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sky"]
+gradient = SubResource("Gradient_sky")
+width = 4
+height = 90
+fill_to = Vector2(0, 1)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(640, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(20, 360)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(100, 10)
+
+[node name="TestPlayer" type="Node2D"]
+script = ExtResource("1_test")
+
+[node name="Background" type="TextureRect" parent="."]
+offset_right = 640.0
+offset_bottom = 360.0
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_sky")
+expand_mode = 1
+
+[node name="Floor" type="StaticBody2D" parent="."]
+position = Vector2(320, 350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor"]
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="Block" type="Control" parent="Floor"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -320.0
+offset_top = -10.0
+offset_right = 320.0
+offset_bottom = 10.0
+mouse_filter = 2
+script = ExtResource("3_block")
+color = Color(0.3, 0.33, 0.45, 1)
+seam_spacing = 32
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(-10, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallLeft"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(650, 180)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallRight"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="PlatformLow" type="StaticBody2D" parent="."]
+position = Vector2(180, 280)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlatformLow"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="Block" type="Control" parent="PlatformLow"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -50.0
+offset_top = -5.0
+offset_right = 50.0
+offset_bottom = 5.0
+mouse_filter = 2
+script = ExtResource("3_block")
+color = Color(0.38, 0.42, 0.56, 1)
+seam_spacing = 25
+
+[node name="PlatformMid" type="StaticBody2D" parent="."]
+position = Vector2(400, 220)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlatformMid"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="Block" type="Control" parent="PlatformMid"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -50.0
+offset_top = -5.0
+offset_right = 50.0
+offset_bottom = 5.0
+mouse_filter = 2
+script = ExtResource("3_block")
+color = Color(0.38, 0.42, 0.56, 1)
+seam_spacing = 25
+
+[node name="PlatformHigh" type="StaticBody2D" parent="."]
+position = Vector2(220, 140)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlatformHigh"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="Block" type="Control" parent="PlatformHigh"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -50.0
+offset_top = -5.0
+offset_right = 50.0
+offset_bottom = 5.0
+mouse_filter = 2
+script = ExtResource("3_block")
+color = Color(0.38, 0.42, 0.56, 1)
+seam_spacing = 25
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(100, 340)
+
+[node name="SkinLabel" type="Label" parent="."]
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 400.0
+offset_bottom = 20.0

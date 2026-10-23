@@ -1,0 +1,58 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://characters/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://components/damage/health.gd" id="2_health"]
+[ext_resource type="Script" path="res://components/damage/hurtbox.gd" id="3_hurtbox"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(12, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurtbox"]
+size = Vector2(12, 32)
+
+[node name="Player" type="CharacterBody2D" groups=["player"]]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -16)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_health")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+position = Vector2(0, -16)
+collision_layer = 2
+collision_mask = 80
+script = ExtResource("3_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_hurtbox")
+
+[node name="Body" type="Node2D" parent="."]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Body"]
+centered = false
+
+[node name="GunPivot" type="Node2D" parent="."]
+z_index = 1
+
+[node name="Gun" type="Sprite2D" parent="GunPivot"]
+centered = false
+
+[node name="Muzzle" type="Marker2D" parent="GunPivot"]
+
+[node name="JumpSound" type="AudioStreamPlayer" parent="."]
+volume_db = -6.0
+bus = &"SFX"
+
+[node name="StepSound" type="AudioStreamPlayer" parent="."]
+volume_db = -30.0
+bus = &"SFX"
+
+[node name="ShootSound" type="AudioStreamPlayer" parent="."]
+volume_db = -8.0
+max_polyphony = 3
+bus = &"SFX"

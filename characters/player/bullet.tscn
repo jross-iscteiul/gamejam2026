@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://characters/player/bullet.gd" id="1_bullet"]
+[ext_resource type="Texture2D" path="res://assets/player/biker/bullet.png" id="2_tex"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bullet"]
+radius = 2.0
+
+[node name="Bullet" type="Area2D" groups=["player_projectile"]]
+collision_layer = 8
+collision_mask = 5
+script = ExtResource("1_bullet")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_tex")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_bullet")
