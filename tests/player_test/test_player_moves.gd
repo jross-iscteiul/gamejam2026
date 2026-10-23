@@ -1,6 +1,6 @@
 extends Node
 # Headless check of player moves in level 1's open start area.
-# Run:  godot --headless --path . res://tests/test_player_moves.tscn
+# Run:  godot --headless --path . res://tests/player_test/test_player_moves.tscn
 
 var t := 0
 var step := 0
@@ -33,7 +33,7 @@ func _step(_d: float) -> bool:
 	if t == 1: # reset onto the floor, facing right
 		p.global_position = start
 		p.velocity = Vector2.ZERO
-		p.facing = 1.0
+		p.facing = 1
 		peak = start.y
 	var step_def: Array = STEPS[step]
 	var inputs: Dictionary = step_def[2]

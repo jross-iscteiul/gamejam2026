@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://levels/shared/checkpoint.tscn" id="7_10g0e"]
 [ext_resource type="PackedScene" path="res://levels/shared/door.tscn" id="8_2un3k"]
 [ext_resource type="Script" path="res://objects/hazards/pit.gd" id="9_tccss"]
-[ext_resource type="PackedScene" path="res://characters/player/playground_player.tscn" id="10_hmls2"]
+[ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="10_hmls2"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_mqpnx"]
 size = Vector2(320, 32)

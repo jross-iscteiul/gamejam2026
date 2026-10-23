@@ -163,7 +163,7 @@ var door_scene: PackedScene = load("res://levels/shared/door.tscn")
 var lever_scene: PackedScene = load("res://levels/shared/lever.tscn")
 var gate_scene: PackedScene = load("res://levels/shared/gate.tscn")
 var trigger_scene: PackedScene = load("res://levels/shared/boss_trigger.tscn")
-var player_scene: PackedScene = load("res://characters/player/playground_player.tscn")
+var player_scene: PackedScene = load("res://characters/player/player.tscn")
 var platform_scene: PackedScene = load("res://objects/platforms/moving_platform.tscn")
 var checkpoint_scene: PackedScene = load("res://levels/shared/checkpoint.tscn")
 

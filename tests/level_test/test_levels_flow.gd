@@ -1,6 +1,6 @@
 extends Node
 # Headless smoke test: intro -> L1 door -> L2 door -> L3 lever+gate+door -> L4 boss trigger.
-# Run:  godot --headless --path . res://tests/test_levels_flow.tscn
+# Run:  godot --headless --path . res://tests/level_test/test_levels_flow.tscn
 var step := 0
 var wait := 0
 

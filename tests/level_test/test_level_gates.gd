@@ -1,7 +1,7 @@
 extends Node
 # Headless check that every movement gate needs its move: the attempt without the move must fail,
 # the attempt with it must succeed. Timings are the best ones found by sweeping (frames after takeoff).
-# Run:  godot --headless --path . res://tests/test_level_gates.tscn
+# Run:  godot --headless --path . res://tests/level_test/test_level_gates.tscn
 
 const T := 32
 # level, start (cell x, cell y, x offset px), second-jump frame (-1 none), dash frame (-1 none),

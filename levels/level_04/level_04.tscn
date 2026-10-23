@@ -4,7 +4,7 @@
 [ext_resource type="TileSet" path="res://levels/shared/tileset.tres" id="2_jtyy1"]
 [ext_resource type="PackedScene" path="res://levels/shared/gate.tscn" id="3_mgj6l"]
 [ext_resource type="PackedScene" path="res://levels/shared/boss_trigger.tscn" id="4_8vc3n"]
-[ext_resource type="PackedScene" path="res://characters/player/playground_player.tscn" id="5_onvoi"]
+[ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="5_onvoi"]
 
 [node name="Level4" type="Node2D" unique_id=139483081]
 script = ExtResource("1_5wv7w")

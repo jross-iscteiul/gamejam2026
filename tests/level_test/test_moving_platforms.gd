@@ -1,6 +1,6 @@
 extends Node
 # Headless check: player rides each moving platform and steps off onto the target ledge.
-# Run:  godot --headless --path . res://tests/test_moving_platforms.tscn
+# Run:  godot --headless --path . res://tests/level_test/test_moving_platforms.tscn
 # [level, wait frames at far end, walk dir after arrival, expect: cell the player ends on must be above row / right of col]
 var c := 0
 var m: Node2D

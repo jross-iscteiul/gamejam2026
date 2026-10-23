@@ -119,10 +119,14 @@ color = Color(0.38, 0.42, 0.56, 1)
 seam_spacing = 25
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
-position = Vector2(100, 340)
+position = Vector2(100, 324)
 
 [node name="SkinLabel" type="Label" parent="."]
 offset_left = 8.0
 offset_top = 4.0
 offset_right = 400.0
 offset_bottom = 20.0
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(320, 180)
+zoom = Vector2(3, 3)

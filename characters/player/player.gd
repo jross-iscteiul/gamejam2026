@@ -1,53 +1,68 @@
 class_name Player
 extends CharacterBody2D
-## Player controller: run, variable-height jump, double jump and a mouse-aimed gun.
+## Player controller: run, double jump, dash, mouse-aimed gun; keys 1-5 switch character.
+## Implements the team Player API (README): dash(direction), set_shield(active), boost_jump().
+## Pits call respawn(); checkpoints move respawn_point.
+
+signal skin_changed(skin: PlayerSkin)
 
 const SKINS := [
 	preload("res://characters/player/biker.tres"),
 	preload("res://characters/player/bot_wheel.tres"),
 	preload("res://characters/player/penguin.tres"),
 	preload("res://characters/player/free_soldier.tres"),
+	preload("res://characters/player/robot.tres"),
 ]
 const BULLET_SCENE: PackedScene = preload("res://characters/player/bullet.tscn")
 const DOUBLE_TAP_WINDOW_MSEC: int = 250
+## Feet sit this far below the origin (levels place the player at a tile centre). Matches Body's y in player.tscn.
+const FEET_Y: float = 16.0
 
-@export_enum("Biker", "Bot Wheel", "Penguin", "Free Soldier") var skin_index: int = 0:
+## Last character picked with the number keys; carries over between levels.
+static var selected_skin: int = -1
+
+@export_enum("Biker", "Bot Wheel", "Penguin", "Free Soldier", "Robot") var skin_index: int = 0:
 	set(value):
 		skin_index = value
 		if is_node_ready():
 			_apply_skin()
 
 @export_group("Movement")
-@export var move_speed: float = 130.0
+@export var move_speed: float = 160.0
 @export var ground_acceleration: float = 1400.0
 @export var air_acceleration: float = 900.0
-@export var gravity: float = 900.0
-@export var max_fall_speed: float = 400.0
+@export var gravity: float = 980.0
+@export var max_fall_speed: float = 1000.0
 
 @export_group("Dash")
-@export var dash_speed: float = 400.0
-@export var dash_duration: float = 0.18
-@export var dash_cooldown: float = 0.45
+@export var dash_speed: float = 420.0
+@export var dash_duration: float = 0.15
+@export var dash_cooldown: float = 0.35
 
 @export_group("Death")
 @export_range(30.0, 110.0) var death_fall_angle_degrees: float = 82.0
 @export var death_fall_duration: float = 0.35
 
 @export_group("Jump")
-@export var jump_velocity: float = 300.0
-@export var double_jump_velocity: float = 260.0
+@export var jump_velocity: float = 480.0
+@export var double_jump_velocity: float = 400.0
 @export var air_jumps: int = 1
-## Upward speed is multiplied by this when jump is released early.
-@export_range(0.0, 1.0) var jump_cut: float = 0.5
+## Upward speed is multiplied by this when jump is released early (1 = fixed-height jumps).
+@export_range(0.0, 1.0) var jump_cut: float = 1.0
 
 @export_group("Gun")
 ## Shots per second while shoot is held.
 @export var fire_rate: float = 6.0
 @export var bullet_damage: float = 1.0
 
+var facing: int = 1
+var respawn_point: Vector2
+var shielded: bool = false
+
 var _skin: PlayerSkin
-var _facing: int = 1
+var _move_direction: int = 1
 var _air_jumps_left: int = 0
+var _can_air_dash: bool = true
 var _aim_direction: Vector2 = Vector2.RIGHT
 var _fire_cooldown: float = 0.0
 var _last_tap_direction: int = 0
@@ -67,13 +82,24 @@ var _is_dead: bool = false
 @onready var _shoot_sound: AudioStreamPlayer = $ShootSound
 @onready var _health: Health = $Health
 @onready var _hurtbox: Hurtbox = $Hurtbox
+@onready var _camera: Camera2D = $Camera2D
 
 
 func _ready() -> void:
+	respawn_point = global_position
 	_sprite.frame_changed.connect(_on_sprite_frame_changed)
 	_hurtbox.health = _health
 	_health.died.connect(_on_died)
+	if selected_skin >= 0:
+		skin_index = selected_skin
 	_apply_skin()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key and key.pressed and not key.echo and key.keycode >= KEY_1 and key.keycode < KEY_1 + SKINS.size():
+		selected_skin = key.keycode - KEY_1
+		skin_index = selected_skin
 
 
 func _physics_process(delta: float) -> void:
@@ -81,6 +107,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
 		move_and_slide()
 		return
+	_dash_cooldown_left = maxf(_dash_cooldown_left - delta, 0.0)
 	_handle_dash_input()
 	_move(delta)
 	_aim()
@@ -89,43 +116,49 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(delta: float) -> void:
-	_dash_cooldown_left = maxf(_dash_cooldown_left - delta, 0.0)
 	var on_floor := is_on_floor()
 	if on_floor:
-		_air_jumps_left = air_jumps
-	else:
-		velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
-
-	if Input.is_action_just_pressed("jump"):
-		if on_floor:
-			velocity.y = -jump_velocity
-			_play(_jump_sound)
-		elif _air_jumps_left > 0:
-			_air_jumps_left -= 1
-			velocity.y = -double_jump_velocity
-			_play(_jump_sound)
-	elif Input.is_action_just_released("jump") and velocity.y < 0.0:
-		velocity.y *= jump_cut
+		_air_jumps_left = maxi(_air_jumps_left, air_jumps) # keeps an unused boost_jump()
+		_can_air_dash = true
 
 	var input_x := Input.get_axis("move_left", "move_right")
-	if _dash_time_left > 0.0:
-		_dash_time_left = maxf(_dash_time_left - delta, 0.0)
-		velocity.x = signf(velocity.x) * dash_speed
+	if _dash_time_left > 0.0: # straight horizontal burst, gravity paused
+		_dash_time_left -= delta
+		velocity = Vector2(facing * dash_speed, 0.0)
 	else:
+		if not on_floor:
+			velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
+		if Input.is_action_just_pressed("jump"):
+			if on_floor:
+				velocity.y = -jump_velocity
+				_play(_jump_sound)
+			elif _air_jumps_left > 0:
+				_air_jumps_left -= 1
+				velocity.y = -double_jump_velocity
+				_play(_jump_sound)
+		elif Input.is_action_just_released("jump") and velocity.y < 0.0:
+			velocity.y *= jump_cut
+
 		var acceleration := ground_acceleration if on_floor else air_acceleration
-		velocity.x = move_toward(velocity.x, input_x * move_speed, acceleration * delta)
-	if input_x != 0.0:
-		_facing = 1 if input_x > 0.0 else -1
-	elif absf(velocity.x) <= 5.0:
-		var mouse_delta_x := get_global_mouse_position().x - global_position.x
-		if absf(mouse_delta_x) > 1.0:
-			_facing = 1 if mouse_delta_x > 0.0 else -1
-	_body.scale.x = _facing
+		# Clamp first so dash speed doesn't carry over once the dash ends.
+		var speed_x := clampf(velocity.x, -move_speed, move_speed)
+		velocity.x = move_toward(speed_x, input_x * move_speed, acceleration * delta)
+		if input_x != 0.0:
+			facing = 1 if input_x > 0.0 else -1
+			_move_direction = facing
+		elif absf(velocity.x) <= 5.0:
+			var mouse_delta_x := get_global_mouse_position().x - global_position.x
+			if absf(mouse_delta_x) > 1.0:
+				facing = 1 if mouse_delta_x > 0.0 else -1
+	_body.scale.x = facing
 
 	move_and_slide()
 
 
 func _handle_dash_input() -> void:
+	if Input.is_action_just_pressed("dash"):
+		dash(Vector2(_move_direction, 0.0))
+		return
 	var direction := 0
 	if Input.is_action_just_pressed("move_left"):
 		direction = -1
@@ -143,17 +176,37 @@ func _handle_dash_input() -> void:
 		_last_tap_time_msec = now
 
 
+## Player API: short horizontal burst, one per airtime. Only the x sign of direction is used.
 func dash(direction: Vector2) -> void:
-	if _is_dead or _dash_cooldown_left > 0.0:
+	if _is_dead or _dash_cooldown_left > 0.0 or not (is_on_floor() or _can_air_dash):
 		return
-	var horizontal_direction := signf(direction.x)
-	if horizontal_direction == 0.0:
-		horizontal_direction = float(_facing)
-	_facing = int(horizontal_direction)
-	_body.scale.x = _facing
+	if direction.x != 0.0:
+		facing = 1 if direction.x > 0.0 else -1
+		_move_direction = facing
+	_body.scale.x = facing
 	_dash_time_left = dash_duration
 	_dash_cooldown_left = dash_cooldown
-	velocity.x = horizontal_direction * dash_speed
+	_can_air_dash = is_on_floor()
+
+
+## Player API: one extra air jump, kept until used.
+func boost_jump() -> void:
+	_air_jumps_left += 1
+
+
+## Player API: blocks damage while active.
+func set_shield(active: bool) -> void:
+	shielded = active
+	_health.invulnerable = active
+
+
+func respawn() -> void:
+	GameState.player_died.emit()
+	global_position = respawn_point
+	velocity = Vector2.ZERO
+	_dash_time_left = 0.0
+	_camera.reset_smoothing()
+	GameState.player_respawned.emit()
 
 
 func take_damage(amount: float, source: Node = null) -> void:
@@ -174,15 +227,15 @@ func _on_died(_source: Node) -> void:
 	fall_tween.tween_property(
 		_body,
 		"rotation",
-		deg_to_rad(death_fall_angle_degrees * _facing),
+		deg_to_rad(death_fall_angle_degrees * facing),
 		death_fall_duration
 	)
-	fall_tween.tween_property(_body, "position:x", 3.0 * _facing, death_fall_duration)
+	fall_tween.tween_property(_body, "position:x", 3.0 * facing, death_fall_duration)
 	GameState.player_died.emit()
 
 
 func _aim() -> void:
-	_gun_pivot.position = Vector2(_skin.shoulder.x * _facing, _skin.shoulder.y)
+	_gun_pivot.position = Vector2(_skin.shoulder.x * facing, _skin.shoulder.y + FEET_Y)
 	var to_mouse := get_global_mouse_position() - _gun_pivot.global_position
 	if to_mouse.length_squared() > 1.0:
 		_aim_direction = to_mouse.normalized()
@@ -253,4 +306,5 @@ func _apply_skin() -> void:
 	var shape := RectangleShape2D.new()
 	shape.size = _skin.body_size
 	_collision.shape = shape
-	_collision.position = Vector2(0.0, -_skin.body_size.y / 2.0)
+	_collision.position = Vector2(0.0, FEET_Y - _skin.body_size.y / 2.0)
+	skin_changed.emit(_skin)

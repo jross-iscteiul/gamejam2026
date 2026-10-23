@@ -1,0 +1,212 @@
+[gd_resource type="Resource" script_class="PlayerSkin" format=3]
+
+[ext_resource type="Script" path="res://characters/player/player_skin.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/robot/idle.png" id="2_idle"]
+[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/robot/walk.png" id="3_walk"]
+[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/robot/jump.png" id="4_jump"]
+[ext_resource type="Texture2D" path="res://assets/player/bot_wheel/gun.png" id="5_gun"]
+[ext_resource type="Texture2D" path="res://assets/player/bot_wheel/bullet.png" id="6_bullet"]
+[ext_resource type="AudioStream" path="res://assets/player/bot_wheel/jump.wav" id="7_jump_snd"]
+[ext_resource type="AudioStream" path="res://assets/player/bot_wheel/step.wav" id="8_step_snd"]
+[ext_resource type="AudioStream" path="res://assets/player/bot_wheel/shoot.wav" id="9_shoot_snd"]
+
+[sub_resource type="AtlasTexture" id="idle_0"]
+atlas = ExtResource("2_idle")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_1"]
+atlas = ExtResource("2_idle")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_2"]
+atlas = ExtResource("2_idle")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_3"]
+atlas = ExtResource("2_idle")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_4"]
+atlas = ExtResource("2_idle")
+region = Rect2(32, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_5"]
+atlas = ExtResource("2_idle")
+region = Rect2(64, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_6"]
+atlas = ExtResource("2_idle")
+region = Rect2(0, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_7"]
+atlas = ExtResource("2_idle")
+region = Rect2(32, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_8"]
+atlas = ExtResource("2_idle")
+region = Rect2(64, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_0"]
+atlas = ExtResource("3_walk")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_1"]
+atlas = ExtResource("3_walk")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_2"]
+atlas = ExtResource("3_walk")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_3"]
+atlas = ExtResource("3_walk")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_4"]
+atlas = ExtResource("3_walk")
+region = Rect2(32, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="walk_5"]
+atlas = ExtResource("3_walk")
+region = Rect2(64, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_0"]
+atlas = ExtResource("4_jump")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_1"]
+atlas = ExtResource("4_jump")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_2"]
+atlas = ExtResource("4_jump")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_3"]
+atlas = ExtResource("4_jump")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_4"]
+atlas = ExtResource("4_jump")
+region = Rect2(32, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_5"]
+atlas = ExtResource("4_jump")
+region = Rect2(64, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_6"]
+atlas = ExtResource("4_jump")
+region = Rect2(0, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="jump_7"]
+atlas = ExtResource("4_jump")
+region = Rect2(32, 64, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_main"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("idle_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("idle_8")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("walk_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("walk_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("walk_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("walk_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("walk_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("walk_5")
+}],
+"loop": true,
+"name": &"run",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("jump_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_4")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("jump_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("jump_7")
+}],
+"loop": false,
+"name": &"fall",
+"speed": 10.0
+}]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Robot"
+sprite_frames = SubResource("SpriteFrames_main")
+sprite_offset = Vector2(-16, -32)
+body_size = Vector2(14, 24)
+shoulder = Vector2(0, -12)
+gun_texture = ExtResource("5_gun")
+gun_offset = Vector2(-1, -2)
+gun_distance = 4.0
+muzzle = Vector2(15, -1)
+bullet_texture = ExtResource("6_bullet")
+jump_sound = ExtResource("7_jump_snd")
+step_sound = ExtResource("8_step_snd")
+step_frames = PackedInt32Array(1, 4)
+shoot_sound = ExtResource("9_shoot_snd")

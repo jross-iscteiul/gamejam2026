@@ -16,14 +16,12 @@ collision_mask = 1
 script = ExtResource("1_player")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -16)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2_health")
 
 [node name="Hurtbox" type="Area2D" parent="."]
-position = Vector2(0, -16)
 collision_layer = 2
 collision_mask = 80
 script = ExtResource("3_hurtbox")
@@ -32,6 +30,7 @@ script = ExtResource("3_hurtbox")
 shape = SubResource("RectangleShape2D_hurtbox")
 
 [node name="Body" type="Node2D" parent="."]
+position = Vector2(0, 16)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Body"]
 centered = false
@@ -45,7 +44,7 @@ centered = false
 [node name="Muzzle" type="Marker2D" parent="GunPivot"]
 
 [node name="JumpSound" type="AudioStreamPlayer" parent="."]
-volume_db = -6.0
+volume_db = -18.0
 bus = &"SFX"
 
 [node name="StepSound" type="AudioStreamPlayer" parent="."]
@@ -56,3 +55,8 @@ bus = &"SFX"
 volume_db = -8.0
 max_polyphony = 3
 bus = &"SFX"
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+position_smoothing_enabled = true
+limit_smoothed = true
