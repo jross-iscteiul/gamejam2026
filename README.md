@@ -49,15 +49,13 @@ These are already set in Project Settings. Don't change them without asking the 
 
 | Setting | Value |
 |---|---|
-| Base resolution | **640×360** (scales cleanly to 1280×720 and 1920×1080) |
-| Stretch mode | `viewport`, aspect `keep` (black bars instead of showing more of the level) |
+| Base resolution | **1920×1080** (game camera zoom 3 → 640×360 world view) |
+| Stretch mode | `canvas_items`, aspect `expand` |
 | Default texture filter | **Nearest** (crisp pixels, no blur) |
 | Snap 2D transforms to pixel | On |
 | Desktop test window | 1280×720 |
 
-**Tile size: TBD (16×16 or 32×32). Decide once and write it here.**
-- **32×32:** the screen shows 20×11 tiles at camera zoom 1.
-- **16×16:** set the player's `Camera2D` zoom to `2` for the same view.
+**Tile size: 32×32** (Industrial Tileset). The player's `Camera2D` uses zoom `3`, so the screen shows 20×11 tiles. UI and the intro are laid out at 1920×1080.
 
 Pixel art rules:
 - **Every sprite and tileset uses the same tile and pixel scale.** Never scale sprites up or down in the editor to make them fit.
@@ -240,9 +238,10 @@ Use these action names. Never check raw keys.
 | `shoot` | Left click |
 | `shield` | Right click |
 | `interact` | E |
+| `dash` | Shift or X (keyboard shortcut for `player.dash()`) |
 | `pause` | Esc or P |
 
-Dash is a double-tap of a move key, detected by JARVIS.
+Dash is also meant to be a double-tap of a move key, detected by JARVIS, which calls `player.dash(direction)`.
 
 ## Audio buses
 
@@ -259,3 +258,18 @@ Each level is split into three scenes so three packages can work on it without c
 | `level_XX_extras.tscn` | Package 6 | Gambling stations, side quests, easter eggs |
 
 Package 5 instances the other two into the level.
+
+## Levels, intro and tooling (branch `feature/intro-and-levels`)
+
+- **Intro:** `ui/intro/intro.tscn` (main scene). Scrolling text; any key loads `levels/level_01/level_01.tscn`.
+- **Levels 1-4:** `levels/level_XX/level_XX.tscn`, generated from the ASCII maps in `levels/build_levels.gd` (legend at the top of that file). Shared level pieces (door, lever, gate, checkpoint, boss trigger, camera zone, tileset) live in `levels/shared/`; moving platforms in `objects/platforms/`, pits in `objects/hazards/`.
+  - Rebuild: `godot --headless --path . res://levels/build_levels.tscn`. **This overwrites the four level scenes**, so either edit the ASCII maps or edit the scenes in the editor, not both.
+  - The `level_XX_entities.tscn` / `level_XX_extras.tscn` sub-scenes are not created yet.
+- **Placeholder player:** `characters/player/player.tscn`: run, double jump, dash, implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
+- **Headless tests** (run from the project folder):
+  ```
+  godot --headless --path . res://tests/test_levels_flow.tscn       # intro -> level 1 -> ... -> boss arena
+  godot --headless --path . res://tests/test_level_gates.tscn       # each obstacle needs its move
+  godot --headless --path . res://tests/test_moving_platforms.tscn  # riding and stepping off platforms
+  godot --headless --path . res://tests/test_player_moves.tscn      # double jump and dash
+  ```
