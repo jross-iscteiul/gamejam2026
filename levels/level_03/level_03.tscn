@@ -1,5 +1,7 @@
 [gd_scene format=4]
 
+[ext_resource type="PackedScene" path="res://levels/level_03/level_03_entities.tscn" id="99_entities"]
+
 [ext_resource type="Script" path="res://levels/shared/level.gd" id="1_3k080"]
 [ext_resource type="TileSet" path="res://levels/shared/tileset.tres" id="2_xs6mv"]
 [ext_resource type="PackedScene" path="res://levels/shared/lever.tscn" id="3_rfe46"]
@@ -57,3 +59,5 @@ shape = SubResource("RectangleShape2D_mqpnx")
 
 [node name="Player" parent="." unique_id=977698673 instance=ExtResource("10_hmls2")]
 position = Vector2(112, 656)
+
+[node name="Entities" parent="." instance=ExtResource("99_entities")]

@@ -1,5 +1,5 @@
 extends Node
-## Global game state and event bus. Stub owned by Package 3 — keep signal/function signatures stable.
+## Package 3 economy and event bus. Existing team interfaces stay stable.
 
 signal tokens_changed(tokens: int)
 signal trust_changed(trust: float)
@@ -11,8 +11,17 @@ signal boss_defeated
 signal boss_health_changed(current: float, maximum: float)
 signal jarvis_say(text: String, mood: String)
 signal cutscene_finished
+signal jarvis_enabled_changed(enabled: bool)
+signal level_started(level: int)
+signal token_collected(value: int)
+signal ability_used(ability: StringName, cost: int)
 
 const MAX_TRUST := 100.0
+const ABILITY_COSTS := {&"dash": 1, &"shield": 2, &"boost_jump": 3}
+const FEED_COST: int = 3
+const FEED_TRUST: float = 25.0
+const TRUST_DECAY := [0.8, 1.2, 1.6, 2.0] # trust per active gameplay second
+const KILL_DOUBT_CHANCE := [0.10, 0.25, 0.40, 0.60]
 
 var tokens: int = 0:
 	set(value):
@@ -21,19 +30,60 @@ var tokens: int = 0:
 
 var trust: float = MAX_TRUST:
 	set(value):
+		var was_enabled := jarvis_enabled
 		trust = clampf(value, 0.0, MAX_TRUST)
 		trust_changed.emit(trust)
+		if was_enabled != jarvis_enabled:
+			jarvis_enabled_changed.emit(jarvis_enabled)
 
 var current_level: int = 0
-var jarvis_hostile: bool = false
+var jarvis_hostile: bool = false:
+	set(value):
+		var was_enabled := jarvis_enabled
+		jarvis_hostile = value
+		if was_enabled != jarvis_enabled:
+			jarvis_enabled_changed.emit(jarvis_enabled)
+var jarvis_enabled: bool:
+	get:
+		return trust > 0.0 and not jarvis_hostile
+
+var gameplay_active: bool = false
+var _rng := RandomNumberGenerator.new()
+
+
+func _ready() -> void:
+	_rng.randomize()
+	enemy_killed.connect(_on_enemy_killed)
+	player_died.connect(_on_player_died)
+	boss_defeated.connect(func() -> void: gameplay_active = false)
+
+
+func _process(delta: float) -> void:
+	if gameplay_active and not jarvis_hostile and current_level in range(1, 5):
+		add_trust(-TRUST_DECAY[current_level - 1] * delta)
+
+
+func reset_run() -> void:
+	gameplay_active = false
+	jarvis_hostile = false
+	current_level = 0
+	tokens = 0
+	trust = MAX_TRUST
+
+
+func begin_level(level: int) -> void:
+	current_level = clampi(level, 1, 4)
+	gameplay_active = true
+	level_started.emit(current_level)
 
 
 func add_tokens(n: int) -> void:
-	tokens += n
+	if n > 0:
+		tokens += n
 
 
 func spend_tokens(n: int) -> bool:
-	if tokens < n:
+	if n < 0 or tokens < n:
 		return false
 	tokens -= n
 	return true
@@ -41,3 +91,43 @@ func spend_tokens(n: int) -> bool:
 
 func add_trust(n: float) -> void:
 	trust += n
+
+
+func feed_jarvis() -> bool:
+	if jarvis_hostile or trust >= MAX_TRUST or not spend_tokens(FEED_COST):
+		return false
+	add_trust(FEED_TRUST)
+	return true
+
+
+## Package 2 can use this before calling the existing Player ability API.
+## Shield cost is per second; its controller chooses a billing interval.
+func use_ability(ability: StringName) -> bool:
+	if not jarvis_enabled or not ABILITY_COSTS.has(ability):
+		return false
+	var cost: int = ABILITY_COSTS[ability]
+	if not spend_tokens(cost):
+		return false
+	ability_used.emit(ability, cost)
+	return true
+
+
+func kill_doubt_chance(level: int = 0) -> float:
+	var chapter := current_level if level == 0 else level
+	return KILL_DOUBT_CHANCE[clampi(chapter, 1, 4) - 1]
+
+
+func _on_enemy_killed(_enemy: Node, killer: Node) -> void:
+	if not jarvis_enabled or not is_instance_valid(killer):
+		return
+	if not killer.is_in_group("player") and not killer.is_in_group("jarvis"):
+		return
+	var category := "kill_jarvis" if killer.is_in_group("jarvis") else "kill_player"
+	if killer.is_in_group("player") and _rng.randf() < kill_doubt_chance():
+		category = "kill_doubt"
+	GameState.jarvis_say.emit(Dialogue.get_line(category, current_level), "smug")
+
+
+func _on_player_died() -> void:
+	if jarvis_enabled:
+		jarvis_say.emit(Dialogue.get_line("death", current_level), "smug")

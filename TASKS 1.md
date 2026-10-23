@@ -68,7 +68,7 @@ Owns: real `GameState`, `objects/token/`, `ui/`, scene manager
   - Token costs and `spend_tokens`
   - Trust decay per level, feeding, disabling JARVIS at 0
   - Kill-doubt chance growing per level
-- Tokens: small and big pickups, magnet, enemy drops
+- Tokens: small and big pickups
 - Scene manager: menu -> intro -> levels 1-4 -> boss -> credits
 - HUD: trust bar (top), token counter, boss health bar
 - Menus: main menu, pause, settings (volume)

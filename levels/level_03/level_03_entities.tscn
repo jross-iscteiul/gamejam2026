@@ -1,0 +1,146 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/shared/level_entities.gd" id="1"]
+[ext_resource type="PackedScene" path="res://objects/token/token_small.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://objects/token/token_big.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://ui/placeholder_enemy/robot.tscn" id="4"]
+
+[node name="Level03Entities" type="Node2D"]
+script = ExtResource("1")
+level_number = 3
+
+[node name="small1" parent="." instance=ExtResource("2")]
+position = Vector2(176, 648)
+
+[node name="small2" parent="." instance=ExtResource("2")]
+position = Vector2(208, 648)
+
+[node name="small3" parent="." instance=ExtResource("2")]
+position = Vector2(240, 648)
+
+[node name="small4" parent="." instance=ExtResource("2")]
+position = Vector2(336, 648)
+
+[node name="small5" parent="." instance=ExtResource("2")]
+position = Vector2(464, 648)
+
+[node name="small6" parent="." instance=ExtResource("2")]
+position = Vector2(592, 648)
+
+[node name="small7" parent="." instance=ExtResource("2")]
+position = Vector2(784, 488)
+
+[node name="small8" parent="." instance=ExtResource("2")]
+position = Vector2(816, 488)
+
+[node name="small9" parent="." instance=ExtResource("2")]
+position = Vector2(1040, 328)
+
+[node name="small10" parent="." instance=ExtResource("2")]
+position = Vector2(1104, 328)
+
+[node name="small11" parent="." instance=ExtResource("2")]
+position = Vector2(1360, 264)
+
+[node name="small12" parent="." instance=ExtResource("2")]
+position = Vector2(1488, 264)
+
+[node name="small13" parent="." instance=ExtResource("2")]
+position = Vector2(1616, 264)
+
+[node name="small14" parent="." instance=ExtResource("2")]
+position = Vector2(1840, 264)
+
+[node name="small15" parent="." instance=ExtResource("2")]
+position = Vector2(1968, 264)
+
+[node name="small16" parent="." instance=ExtResource("2")]
+position = Vector2(2224, 264)
+
+[node name="small17" parent="." instance=ExtResource("2")]
+position = Vector2(2352, 264)
+
+[node name="small18" parent="." instance=ExtResource("2")]
+position = Vector2(2416, 264)
+
+[node name="small19" parent="." instance=ExtResource("2")]
+position = Vector2(976, 648)
+
+[node name="small20" parent="." instance=ExtResource("2")]
+position = Vector2(1104, 648)
+
+[node name="small21" parent="." instance=ExtResource("2")]
+position = Vector2(1264, 648)
+
+[node name="small22" parent="." instance=ExtResource("2")]
+position = Vector2(1424, 648)
+
+[node name="small23" parent="." instance=ExtResource("2")]
+position = Vector2(1840, 552)
+
+[node name="small24" parent="." instance=ExtResource("2")]
+position = Vector2(2288, 584)
+
+[node name="small25" parent="." instance=ExtResource("2")]
+position = Vector2(2544, 648)
+
+[node name="small26" parent="." instance=ExtResource("2")]
+position = Vector2(2640, 648)
+
+[node name="small27" parent="." instance=ExtResource("2")]
+position = Vector2(3024, 648)
+
+[node name="small28" parent="." instance=ExtResource("2")]
+position = Vector2(3152, 648)
+
+[node name="small29" parent="." instance=ExtResource("2")]
+position = Vector2(3312, 648)
+
+[node name="big1" parent="." instance=ExtResource("3")]
+position = Vector2(2768, 584)
+
+[node name="big2" parent="." instance=ExtResource("3")]
+position = Vector2(2896, 584)
+
+[node name="big3" parent="." instance=ExtResource("3")]
+position = Vector2(2032, 232)
+
+[node name="enemy1" parent="." instance=ExtResource("4")]
+position = Vector2(464, 656)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy2" parent="." instance=ExtResource("4")]
+position = Vector2(1104, 336)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy3" parent="." instance=ExtResource("4")]
+position = Vector2(1520, 272)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy4" parent="." instance=ExtResource("4")]
+position = Vector2(2320, 272)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy5" parent="." instance=ExtResource("4")]
+position = Vector2(1360, 656)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy6" parent="." instance=ExtResource("4")]
+position = Vector2(1872, 560)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy7" parent="." instance=ExtResource("4")]
+position = Vector2(2320, 592)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997
+
+[node name="enemy8" parent="." instance=ExtResource("4")]
+position = Vector2(3120, 656)
+patrol_distance = 48.0
+fire_interval = 2.1999999999999997

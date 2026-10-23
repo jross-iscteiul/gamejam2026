@@ -1,5 +1,7 @@
 [gd_scene format=4]
 
+[ext_resource type="PackedScene" path="res://levels/level_04/level_04_entities.tscn" id="99_entities"]
+
 [ext_resource type="Script" path="res://levels/shared/level.gd" id="1_5wv7w"]
 [ext_resource type="TileSet" path="res://levels/shared/tileset.tres" id="2_jtyy1"]
 [ext_resource type="PackedScene" path="res://levels/shared/gate.tscn" id="3_mgj6l"]
@@ -43,3 +45,5 @@ horizontal_alignment = 1
 
 [node name="Player" parent="." unique_id=1205354070 instance=ExtResource("5_onvoi")]
 position = Vector2(112, 272)
+
+[node name="Entities" parent="." instance=ExtResource("99_entities")]

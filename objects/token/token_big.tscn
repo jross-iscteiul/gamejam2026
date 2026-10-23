@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://objects/token/token.gd" id="1"]
+
+[sub_resource type="CircleShape2D" id="shape"]
+radius = 12.0
+
+[node name="TokenBig" type="Area2D" groups=["token"]]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1")
+value = 5
+big = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("shape")

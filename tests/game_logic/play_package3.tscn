@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://levels/level_01/level_01.tscn" id="1"]
+[ext_resource type="Script" path="res://tests/game_logic/play_controls.gd" id="2"]
+
+[node name="Package3Playground" instance=ExtResource("1")]
+
+[node name="TestControls" type="CanvasLayer" parent="."]
+layer = 21
+script = ExtResource("2")

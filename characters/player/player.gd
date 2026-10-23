@@ -71,6 +71,7 @@ var _last_tap_time_msec: int = 0
 var _dash_time_left: float = 0.0
 var _dash_cooldown_left: float = 0.0
 var _is_dead: bool = false
+var _death_tween: Tween
 
 @onready var _collision: CollisionShape2D = $CollisionShape2D
 @onready var _body: Node2D = $Body
@@ -91,6 +92,7 @@ func _ready() -> void:
 	_sprite.frame_changed.connect(_on_sprite_frame_changed)
 	_hurtbox.health = _health
 	_health.died.connect(_on_died)
+	_health.damaged.connect(_on_damaged)
 	if selected_skin >= 0:
 		skin_index = selected_skin
 	_apply_skin()
@@ -186,6 +188,7 @@ func dash(direction: Vector2) -> void:
 		_move_direction = facing
 	_body.scale.x = facing
 	_dash_time_left = dash_duration
+	_health.grant_invulnerability(dash_duration)
 	_dash_cooldown_left = dash_cooldown
 	_can_air_dash = is_on_floor()
 
@@ -202,10 +205,27 @@ func set_shield(active: bool) -> void:
 
 
 func respawn() -> void:
-	GameState.player_died.emit()
+	if _death_tween and _death_tween.is_running():
+		_death_tween.kill()
+	if not _is_dead:
+		GameState.player_died.emit()
+	_is_dead = false
+	_health.restore()
+	_health.grant_invulnerability(1.0)
+	set_shield(false)
+	collision_layer = 2
+	_hurtbox.set_deferred("monitoring", true)
+	_hurtbox.set_deferred("monitorable", true)
+	_body.rotation = 0.0
+	_body.position = Vector2(0.0, FEET_Y)
+	_gun_pivot.visible = true
+	_sprite.play(&"idle")
 	global_position = respawn_point
 	velocity = Vector2.ZERO
 	_dash_time_left = 0.0
+	_dash_cooldown_left = 0.0
+	_air_jumps_left = air_jumps
+	_can_air_dash = true
 	_camera.reset_smoothing()
 	GameState.player_respawned.emit()
 
@@ -223,6 +243,7 @@ func _on_died(_source: Node) -> void:
 	_gun_pivot.visible = false
 	_sprite.stop()
 	var fall_tween := create_tween()
+	_death_tween = fall_tween
 	fall_tween.set_parallel(true)
 	fall_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	fall_tween.tween_property(
@@ -232,7 +253,14 @@ func _on_died(_source: Node) -> void:
 		death_fall_duration
 	)
 	fall_tween.tween_property(_body, "position:x", 3.0 * facing, death_fall_duration)
+	fall_tween.chain().tween_callback(respawn)
 	GameState.player_died.emit()
+
+
+func _on_damaged(_amount: float, _source: Node) -> void:
+	var flash := create_tween()
+	flash.tween_property(_body, "modulate", Color(2.0, 0.5, 0.5), 0.04)
+	flash.tween_property(_body, "modulate", Color.WHITE, 0.15)
 
 
 func _aim() -> void:
@@ -247,6 +275,8 @@ func _aim() -> void:
 
 func _shoot(delta: float) -> void:
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
+	if get_viewport().gui_get_hovered_control() != null:
+		return
 	if not Input.is_action_pressed("shoot") or _fire_cooldown > 0.0:
 		return
 	_fire_cooldown = 1.0 / fire_rate

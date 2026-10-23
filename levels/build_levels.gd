@@ -311,6 +311,12 @@ func _build_level(index: int, tileset: TileSet) -> void:
 		nodes.trigger.gate = gates["O"]
 		nodes.trigger.arena = Rect2(gate_x * TILE, 0, (map[0].length() - gate_x) * TILE, map.size() * TILE)
 
+	# Package 3 owns entity placements; preserve the instance when regenerating level geometry.
+	var entities_path := "res://levels/level_%02d/level_%02d_entities.tscn" % [index + 1, index + 1]
+	if ResourceLoader.exists(entities_path):
+		var entities: PackedScene = load(entities_path)
+		_add(root, entities.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE))
+
 	var scene := PackedScene.new()
 	scene.pack(root)
 	var path := "res://levels/level_%02d/level_%02d.tscn" % [index + 1, index + 1]

@@ -1,0 +1,260 @@
+extends CanvasLayer
+## Scene-local HUD and pause menu. No transition manager or cutscene ownership here.
+
+var _root: Control
+var _tokens: Label
+var _health: Label
+var _status: Label
+var _trust: ProgressBar
+var _feed: Button
+var _boss_box: VBoxContainer
+var _boss: ProgressBar
+var _speech: Label
+var _notice: Label
+var _overlay: ColorRect
+var _pause_actions: VBoxContainer
+var _settings: VBoxContainer
+var _pause_title: Label
+var _speech_time: float = 0.0
+var _notice_time: float = 0.0
+var _click: AudioStream
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	layer = 20
+	AudioSettings.load_volumes()
+	_click = GameUI.chime()
+	_root = Control.new()
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.theme = GameUI.theme()
+	add_child(_root)
+	_build_hud()
+	_build_pause()
+	GameState.tokens_changed.connect(_update_tokens)
+	GameState.trust_changed.connect(_update_trust)
+	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_trust(GameState.trust))
+	GameState.boss_health_changed.connect(_update_boss)
+	GameState.boss_defeated.connect(_boss_defeated)
+	GameState.jarvis_say.connect(_say)
+	GameState.token_collected.connect(func(value: int) -> void: notify("+%d TOKEN%s" % [value, "S" if value != 1 else ""]))
+	GameState.player_respawned.connect(func() -> void: notify("CHECKPOINT RESTORED"))
+	var player := get_tree().get_first_node_in_group("player")
+	if player:
+		var health := player.get_node_or_null("Health") as Health
+		if health:
+			health.changed.connect(_update_health)
+			_update_health(health.current, health.max_health)
+	_update_tokens(GameState.tokens)
+	_update_trust(GameState.trust)
+
+
+func _build_hud() -> void:
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	margin.offset_left = 32
+	margin.offset_top = 24
+	margin.offset_right = -32
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(margin)
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", GameUI.style(Color("131c2eea")))
+	margin.add_child(panel)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(row)
+	var info := VBoxContainer.new()
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.custom_minimum_size.x = 280
+	info.add_child(GameUI.label("SECTOR %02d / 04" % GameState.current_level, 16, GameUI.MUTED))
+	_health = GameUI.label("HP 3 / 3", 24, GameUI.RED)
+	info.add_child(_health)
+	row.add_child(info)
+	var trust_box := VBoxContainer.new()
+	trust_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trust_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status = GameUI.label("JARVIS / ONLINE", 16, GameUI.CYAN)
+	trust_box.add_child(_status)
+	_trust = ProgressBar.new()
+	_trust.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_trust.custom_minimum_size = Vector2(300, 28)
+	_trust.show_percentage = false
+	trust_box.add_child(_trust)
+	row.add_child(trust_box)
+	_tokens = GameUI.label("TOKENS 000", 24, GameUI.GOLD)
+	_tokens.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_tokens.custom_minimum_size.x = 264
+	row.add_child(_tokens)
+	_feed = GameUI.button("FEED / 3", _feed_jarvis)
+	_feed.tooltip_text = "Spend 3 tokens to restore 25 trust. JARVIS stops helping at zero trust."
+	row.add_child(_feed)
+	var pause := GameUI.button("II", func() -> void: set_paused(true))
+	pause.tooltip_text = "Pause (Esc / P)"
+	row.add_child(pause)
+	_boss_box = VBoxContainer.new()
+	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_boss_box.offset_left = -420
+	_boss_box.offset_right = 420
+	_boss_box.offset_top = -128
+	_boss_box.offset_bottom = -40
+	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_box.add_child(GameUI.label("BOSS", 24, GameUI.RED))
+	_boss = ProgressBar.new()
+	_boss.custom_minimum_size.y = 32
+	_boss.show_percentage = false
+	_boss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss.add_theme_stylebox_override("fill", GameUI.style(GameUI.RED, GameUI.RED))
+	_boss_box.add_child(_boss)
+	_root.add_child(_boss_box)
+	_boss_box.hide()
+	_speech = GameUI.label("", 16, GameUI.CYAN)
+	_speech.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_speech.offset_left = 64
+	_speech.offset_top = 158
+	_speech.offset_right = -64
+	_speech.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_speech.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_speech.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_speech.add_theme_color_override("font_shadow_color", GameUI.INK)
+	_speech.add_theme_constant_override("shadow_offset_x", 3)
+	_speech.add_theme_constant_override("shadow_offset_y", 3)
+	_root.add_child(_speech)
+	_notice = GameUI.label("", 16, GameUI.GOLD)
+	_notice.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_notice.offset_left = 48
+	_notice.offset_top = -64
+	_notice.offset_right = 1000
+	_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_notice)
+
+
+func _build_pause() -> void:
+	_overlay = ColorRect.new()
+	_overlay.color = Color("080e1be8")
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size.x = 720
+	panel.add_theme_stylebox_override("panel", GameUI.style(GameUI.PANEL, GameUI.CYAN))
+	center.add_child(panel)
+	var column := VBoxContainer.new()
+	panel.add_child(column)
+	_pause_title = GameUI.label("PAUSED", 32, GameUI.CYAN)
+	column.add_child(_pause_title)
+	_pause_actions = VBoxContainer.new()
+	_pause_actions.add_child(GameUI.button("RESUME", func() -> void: set_paused(false)))
+	_pause_actions.add_child(GameUI.button("SETTINGS", _show_settings))
+	_pause_actions.add_child(GameUI.button("RESTART LEVEL", _restart))
+	_pause_actions.add_child(GameUI.button("MAIN MENU", _main_menu))
+	column.add_child(_pause_actions)
+	_settings = VBoxContainer.new()
+	_settings.add_child(AudioSettings.new())
+	_settings.add_child(GameUI.button("BACK", _hide_settings))
+	column.add_child(_settings)
+	_settings.hide()
+	_overlay.hide()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("pause"):
+		set_paused(not get_tree().paused)
+		get_viewport().set_input_as_handled()
+
+
+func _process(delta: float) -> void:
+	if get_tree().paused:
+		return
+	_speech_time -= delta
+	_notice_time -= delta
+	_speech.visible = _speech_time > 0.0
+	_notice.visible = _notice_time > 0.0
+
+
+func _update_tokens(value: int) -> void:
+	_tokens.text = "TOKENS %03d" % value
+	_update_feed()
+
+
+func _update_trust(value: float) -> void:
+	_trust.value = value
+	var state := "OFFLINE" if not GameState.jarvis_enabled else "ONLINE"
+	_status.text = "JARVIS / %s / %d%%" % [state, ceili(value)]
+	_status.add_theme_color_override("font_color", GameUI.RED if value <= 20 else GameUI.CYAN)
+	_update_feed()
+
+
+func _update_feed() -> void:
+	_feed.disabled = GameState.tokens < GameState.FEED_COST or GameState.trust >= GameState.MAX_TRUST or GameState.jarvis_hostile
+
+
+func _feed_jarvis() -> void:
+	if GameState.feed_jarvis():
+		GameUI.play_sound(self, _click)
+		notify("JARVIS +25 TRUST")
+
+
+func _update_health(value: float, maximum: float) -> void:
+	_health.text = "HP %d / %d" % [ceili(value), ceili(maximum)]
+
+
+func _update_boss(value: float, maximum: float) -> void:
+	_boss_box.visible = maximum > 0.0 and value > 0.0
+	_boss.max_value = maxf(1.0, maximum)
+	_boss.value = value
+
+
+func _boss_defeated() -> void:
+	_boss_box.hide()
+	notify("BOSS DEFEATED")
+
+
+func _say(text: String, _mood: String) -> void:
+	_speech.text = "JARVIS: " + text
+	_speech_time = 4.0
+	_speech.show()
+
+
+func notify(text: String) -> void:
+	_notice.text = text
+	_notice_time = 2.0
+	_notice.show()
+
+
+func set_paused(active: bool) -> void:
+	get_tree().paused = active
+	_overlay.visible = active
+	_hide_settings()
+	if active:
+		_pause_actions.get_child(0).grab_focus()
+	GameUI.play_sound(self, _click)
+
+
+func _show_settings() -> void:
+	_pause_actions.hide()
+	_settings.show()
+	_pause_title.text = "SETTINGS"
+
+
+func _hide_settings() -> void:
+	_pause_actions.show()
+	_settings.hide()
+	_pause_title.text = "PAUSED"
+
+
+func _restart() -> void:
+	get_tree().paused = false
+	# Restart the current chapter with a clean economy, so reloading cannot farm pickups.
+	var level := GameState.current_level
+	GameState.reset_run()
+	get_tree().change_scene_to_file("res://levels/level_%02d/level_%02d.tscn" % [level, level])
+
+
+func _main_menu() -> void:
+	get_tree().paused = false
+	GameState.gameplay_active = false
+	get_tree().change_scene_to_file("res://ui/menus/main_menu.tscn")
