@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://tests/player_test/test_player.tscn" id="1_test_player"]
+
+[node name="PlaygroundMike" type="Node2D"]
+
+[node name="TestPlayer" parent="." instance=ExtResource("1_test_player")]

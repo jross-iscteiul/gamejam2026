@@ -1,6 +1,0 @@
-[gd_scene format=3]
-
-[ext_resource type="Script" path="res://tests/test_levels_flow.gd" id="1"]
-
-[node name="TestLevelsFlow" type="Node"]
-script = ExtResource("1")

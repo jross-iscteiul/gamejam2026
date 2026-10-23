@@ -17,7 +17,7 @@ The full task split per package is in [TASKS 1.md](TASKS%201.md).
 - **Don't change signal or function signatures** in `GameState`, `Dialogue` or the damage components without telling everyone. You can add to them, but don't rename or remove anything.
 - **Commit `.uid` files.** Godot generates them next to scripts and resources, and other files reference them.
 - **Don't commit `.godot/`.** It's already in `.gitignore`.
-- **Each package has a test scene** in `tests/` (e.g. `tests/test_player.tscn`) so you can work without the full game.
+- **Each package has a test scene** in `tests/` (e.g. `tests/player_test/test_player.tscn`) so you can work without the full game.
 - Pull and merge `main` often to avoid painful merges at the end.
 
 ## Guidelines
@@ -265,11 +265,11 @@ Package 5 instances the other two into the level.
 - **Levels 1-4:** `levels/level_XX/level_XX.tscn`, generated from the ASCII maps in `levels/build_levels.gd` (legend at the top of that file). Shared level pieces (door, lever, gate, checkpoint, boss trigger, camera zone, tileset) live in `levels/shared/`; moving platforms in `objects/platforms/`, pits in `objects/hazards/`.
   - Rebuild: `godot --headless --path . res://levels/build_levels.tscn`. **This overwrites the four level scenes**, so either edit the ASCII maps or edit the scenes in the editor, not both.
   - The `level_XX_entities.tscn` / `level_XX_extras.tscn` sub-scenes are not created yet.
-- **Placeholder player:** `characters/player/player.tscn`: run, double jump, dash, implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
+- **Player:** `characters/player/player.tscn`: run, double jump, dash (Shift/X or double-tap), mouse-aimed gun, keys 1-6 switch character (5 = robot, 6 = gas mask); implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
 - **Headless tests** (run from the project folder):
   ```
-  godot --headless --path . res://tests/test_levels_flow.tscn       # intro -> level 1 -> ... -> boss arena
-  godot --headless --path . res://tests/test_level_gates.tscn       # each obstacle needs its move
-  godot --headless --path . res://tests/test_moving_platforms.tscn  # riding and stepping off platforms
-  godot --headless --path . res://tests/test_player_moves.tscn      # double jump and dash
+  godot --headless --path . res://tests/level_test/test_levels_flow.tscn       # intro -> level 1 -> ... -> boss arena
+  godot --headless --path . res://tests/level_test/test_level_gates.tscn       # each obstacle needs its move
+  godot --headless --path . res://tests/level_test/test_moving_platforms.tscn  # riding and stepping off platforms
+  godot --headless --path . res://tests/player_test/test_player_moves.tscn     # double jump and dash
   ```
