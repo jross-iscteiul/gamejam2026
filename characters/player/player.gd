@@ -1,6 +1,6 @@
 class_name Player
 extends CharacterBody2D
-## Player controller: run, double jump, dash, mouse-aimed gun; keys 1-5 switch character.
+## Player controller: run, double jump, dash, mouse-aimed gun; keys 1-6 switch character.
 ## Implements the team Player API (README): dash(direction), set_shield(active), boost_jump().
 ## Pits call respawn(); checkpoints move respawn_point.
 
@@ -12,6 +12,7 @@ const SKINS := [
 	preload("res://characters/player/penguin.tres"),
 	preload("res://characters/player/free_soldier.tres"),
 	preload("res://characters/player/robot.tres"),
+	preload("res://characters/player/gas_mask.tres"),
 ]
 const BULLET_SCENE: PackedScene = preload("res://characters/player/bullet.tscn")
 const DOUBLE_TAP_WINDOW_MSEC: int = 250
@@ -21,7 +22,7 @@ const FEET_Y: float = 16.0
 ## Last character picked with the number keys; carries over between levels.
 static var selected_skin: int = -1
 
-@export_enum("Biker", "Bot Wheel", "Penguin", "Free Soldier", "Robot") var skin_index: int = 0:
+@export_enum("Biker", "Bot Wheel", "Penguin", "Free Soldier", "Robot", "Gas Mask") var skin_index: int = 0:
 	set(value):
 		skin_index = value
 		if is_node_ready():

@@ -1,5 +1,5 @@
 extends Node2D
-## Player test scene. Keys 1-5 switch characters (handled by Player); K applies damage for testing death.
+## Player test scene. Keys 1-6 switch characters (handled by Player); K applies damage for testing death.
 
 @onready var _player: Player = $Player
 @onready var _label: Label = $SkinLabel
@@ -19,4 +19,4 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _update_label() -> void:
-	_label.text = "1-5 switch  |  K damage  |  %s" % (Player.SKINS[_player.skin_index] as PlayerSkin).display_name
+	_label.text = "1-6 switch  |  K damage  |  %s" % (Player.SKINS[_player.skin_index] as PlayerSkin).display_name

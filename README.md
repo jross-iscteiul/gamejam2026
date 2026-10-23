@@ -265,7 +265,7 @@ Package 5 instances the other two into the level.
 - **Levels 1-4:** `levels/level_XX/level_XX.tscn`, generated from the ASCII maps in `levels/build_levels.gd` (legend at the top of that file). Shared level pieces (door, lever, gate, checkpoint, boss trigger, camera zone, tileset) live in `levels/shared/`; moving platforms in `objects/platforms/`, pits in `objects/hazards/`.
   - Rebuild: `godot --headless --path . res://levels/build_levels.tscn`. **This overwrites the four level scenes**, so either edit the ASCII maps or edit the scenes in the editor, not both.
   - The `level_XX_entities.tscn` / `level_XX_extras.tscn` sub-scenes are not created yet.
-- **Player:** `characters/player/player.tscn`: run, double jump, dash (Shift/X or double-tap), mouse-aimed gun, keys 1-5 switch character (5 = robot); implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
+- **Player:** `characters/player/player.tscn`: run, double jump, dash (Shift/X or double-tap), mouse-aimed gun, keys 1-6 switch character (5 = robot, 6 = gas mask); implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
 - **Headless tests** (run from the project folder):
   ```
   godot --headless --path . res://tests/level_test/test_levels_flow.tscn       # intro -> level 1 -> ... -> boss arena
