@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2htriqdj8cpr"
-path="res://.godot/imported/2_Industrial_Tileset_1_Background.png-d496efd8368b89810a034a52586dac95.ctex"
+uid="uid://ciaycqqei2xed"
+path="res://.godot/imported/foreground.png-71e14e1b8d666778e5ff3b41724135b9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/industrial_tileset/tiles/2_Industrial_Tileset_1_Background.png"
-dest_files=["res://.godot/imported/2_Industrial_Tileset_1_Background.png-d496efd8368b89810a034a52586dac95.ctex"]
+source_file="res://assets/art/backgrounds/neon_street/foreground.png"
+dest_files=["res://.godot/imported/foreground.png-71e14e1b8d666778e5ff3b41724135b9.ctex"]
 
 [params]
 

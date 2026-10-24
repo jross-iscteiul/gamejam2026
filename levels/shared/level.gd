@@ -1,9 +1,13 @@
 extends Node2D
-## Level root: sky colour + camera limits clamped to the tile map.
+## Level root: sky colour, camera limits clamped to the tile map, and level music.
 
 @export var number := 1
 @export var sky := Color(0.835, 0.902, 0.961)
+
 @export var jarvis_scene: PackedScene = preload("res://characters/jarvis/jarvis.tscn")
+
+## Looping track on the Music bus. Kept playing across levels so it does not restart at each door.
+@export var music: AudioStream
 
 @onready var camera: Camera2D = $Player/Camera2D
 
@@ -17,6 +21,7 @@ func _ready() -> void:
 	camera.reset_smoothing()
 	if jarvis_scene and number in range(1, 5):
 		add_child(jarvis_scene.instantiate())
+	_play_music()
 
 
 func lock_camera(rect: Rect2) -> void:
@@ -24,3 +29,20 @@ func lock_camera(rect: Rect2) -> void:
 	camera.limit_top = int(rect.position.y)
 	camera.limit_right = int(rect.end.x)
 	camera.limit_bottom = int(rect.end.y)
+
+
+func _play_music() -> void:
+	if music == null:
+		return
+	var player := get_tree().root.get_node_or_null("LevelMusic") as AudioStreamPlayer
+	if player == null: # lives under the root, so it survives change_scene_to_file()
+		player = AudioStreamPlayer.new()
+		player.name = "LevelMusic"
+		player.bus = &"Music"
+		get_tree().root.add_child.call_deferred(player)
+		await player.ready
+	if player.stream != music or not player.playing:
+		if music is AudioStreamOggVorbis:
+			music.loop = true
+		player.stream = music
+		player.play()

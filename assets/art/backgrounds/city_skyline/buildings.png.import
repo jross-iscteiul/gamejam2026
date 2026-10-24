@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4lr386ly3ism"
-path="res://.godot/imported/2_Industrial_Tileset_1C_Background_Violet.png-4057bf3bae5c9d21c7d5b4c2380b085f.ctex"
+uid="uid://xm8ku7v76f4w"
+path="res://.godot/imported/buildings.png-18c85d39c5992013a026760e26aadba7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/industrial_tileset/tiles/2_Industrial_Tileset_1C_Background_Violet.png"
-dest_files=["res://.godot/imported/2_Industrial_Tileset_1C_Background_Violet.png-4057bf3bae5c9d21c7d5b4c2380b085f.ctex"]
+source_file="res://assets/art/backgrounds/city_skyline/buildings.png"
+dest_files=["res://.godot/imported/buildings.png-18c85d39c5992013a026760e26aadba7.ctex"]
 
 [params]
 
