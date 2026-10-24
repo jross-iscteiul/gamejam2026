@@ -20,7 +20,7 @@ The expected URL is **https://jross-iscteiul.github.io/gamejam2026/**. Until Pag
 
 The existing movement-gate suite is not a CI gate yet: its `L1 tunnel pit4 / jump+dash` check already fails on the original checkout. See `tests/game_logic/README.md`.
 
-The branch also adds **Settings → Touch Controls → Auto / On / Off** for mobile play. Auto detects touch devices; On/Off override detection, and the preference is saved. The HUD provides multi-touch movement, jump, dash, interact and drag-to-aim/fire pads. A small Player adapter supplies touch aiming/firing without changing movement tuning, levels or the input map.
+The branch also adds **Settings → Touch Controls → Auto / On / Off** for mobile play. Auto detects touch devices; On/Off override detection, and the preference is saved. The HUD provides multi-touch movement slide bar, jump, dash, interact and drag-to-aim/fire pads. A small Player adapter supplies touch aiming/firing without changing movement tuning, levels or the input map.
 
 ## Local export
 

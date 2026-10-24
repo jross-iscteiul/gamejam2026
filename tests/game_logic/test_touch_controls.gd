@@ -34,6 +34,13 @@ func _finger(index: int, point: Vector2, pressed: bool, canceled: bool = false) 
 	get_viewport().push_input(event, true)
 
 
+func _slide(index: int, point: Vector2) -> void:
+	var event := InputEventScreenDrag.new()
+	event.index = index
+	event.position = point
+	get_viewport().push_input(event, true)
+
+
 func _capture(name: String) -> void:
 	if "--visual" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
@@ -59,7 +66,7 @@ func _run() -> void:
 	ControlSettings._touch_mode = -1
 	_check(ControlSettings.get_touch_mode() == ControlSettings.TouchMode.ON, "touch preference persists to disk")
 	var start := _player.global_position
-	_finger(0, _touch.button_center(&"move_right"), true)
+	_finger(0, _touch.move_bar_point(0.95), true)
 	_finger(1, _touch.button_center(&"jump"), true)
 	await _frames(6)
 	_check(_player.global_position.x > start.x and _player.velocity.y < 0, "two fingers move and jump the real player together")
@@ -92,15 +99,25 @@ func _run() -> void:
 	_finger(4, Vector2.ZERO, false, true)
 	await _frames(1)
 	_check(not Input.is_action_pressed("interact"), "canceled touches release their action")
-	_finger(5, _touch.button_center(&"move_left"), true)
-	_finger(6, _touch.button_center(&"move_left"), true)
+	_finger(5, _touch.move_bar_point(0.05), true)
+	await _frames(1)
+	_check(Input.is_action_pressed("move_left") and not Input.is_action_pressed("move_right"), "pressing the left end of the bar moves left")
+	_finger(6, _touch.move_bar_point(0.95), true)
+	_check(Input.is_action_pressed("move_left"), "a second finger on the bar does not take over")
+	_finger(6, Vector2.ZERO, false)
+	_slide(5, _touch.move_bar_point(0.95))
+	await _frames(1)
+	_check(Input.is_action_pressed("move_right") and not Input.is_action_pressed("move_left"), "sliding to the right end switches to moving right")
+	_slide(5, _touch.move_bar_point(0.5))
+	await _frames(1)
+	_check(not Input.is_action_pressed("move_right") and not Input.is_action_pressed("move_left"), "the bar centre stops movement")
+	_slide(5, _touch.move_bar_point(0.1) + Vector2(0, 400))
+	await _frames(1)
+	_check(Input.is_action_pressed("move_left"), "a slide keeps steering after leaving the bar")
 	_finger(5, Vector2.ZERO, false)
 	await _frames(1)
-	_check(Input.is_action_pressed("move_left"), "a second finger can keep the same button held")
-	_finger(6, Vector2.ZERO, false)
-	await _frames(1)
-	_check(not Input.is_action_pressed("move_left"), "the final finger releases the shared button")
-	_finger(7, _touch.button_center(&"move_right"), true)
+	_check(not Input.is_action_pressed("move_left"), "releasing the bar stops movement")
+	_finger(7, _touch.move_bar_point(0.95), true)
 	_finger(8, _touch.button_center(&"aim"), true)
 	_hud.set_paused(true)
 	await _frames(1)
@@ -119,7 +136,7 @@ func _run() -> void:
 	_check(not Input.is_action_pressed("jump"), "disabling controls releases a held jump")
 	_check(not Input.is_action_pressed("shoot"), "disabling controls clears residual emulated mouse firing")
 	ControlSettings.set_touch_mode(ControlSettings.TouchMode.ON)
-	_finger(10, _touch.button_center(&"move_right"), true)
+	_finger(10, _touch.move_bar_point(0.95), true)
 	_touch.get_window().focus_exited.emit()
 	await _frames(1)
 	_check(not Input.is_action_pressed("move_right"), "losing window focus releases touch movement")
@@ -130,7 +147,7 @@ func _run() -> void:
 	mouse.device = InputEvent.DEVICE_ID_MOUSE
 	get_viewport().push_input(mouse, true)
 	_check(not _player._touch_active, "moving a physical mouse restores mouse aiming")
-	_finger(12, _touch.button_center(&"move_left"), true)
+	_finger(12, _touch.move_bar_point(0.05), true)
 	get_tree().change_scene_to_file("res://levels/level_02/level_02.tscn")
 	await _frames(5)
 	_check(not Input.is_action_pressed("move_left"), "level transitions clear held touch actions")
