@@ -13,6 +13,8 @@ extends Node
 ##          R lava (instant death)   W toxic waste (1 HP while inside); a run of cells = one pool
 ##          Z..z laser between two emitters (same row or column)   M swinging hammer (pivot cell)
 ##          B fixed spinning blade   S..s blade sliding between S and s (same row or column)
+## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
+##            all levels play MUSIC on the Music bus.
 
 const TILE := 32
 const TILESET_PATH := "res://levels/shared/tileset.tres"
@@ -29,6 +31,7 @@ const SOURCES := [
 const LEVELS := [
 	{ # Level 1 - the docks: long run with steps, dips and an optional upper route.
 		"fg": 0, "bg": 3, "sky": Color(0.835, 0.902, 0.961), "difficulty": 1.0,
+		"background": "city_skyline",
 		"map": [
 			"##################################################################################################################################",
 			"#..................................................................####################..........................................#",
@@ -56,6 +59,7 @@ const LEVELS := [
 	},
 	{ # Level 2 - the shaft: climb zig-zag platforms, cross the top, then a long drop (future fall damage) to the door.
 		"fg": 1, "bg": 4, "sky": Color(0.835, 0.902, 0.961), "difficulty": 1.2,
+		"background": "neon_night",
 		# zoom out + look down over the descent so the next platform is always on screen
 		"camera_zones": [Rect2i(30, 1, 39, 50)],
 		"map": [
@@ -116,6 +120,7 @@ const LEVELS := [
 	},
 	{ # Level 3 - control room: climb to the upper deck lever, drop down, pass the opened gate to the door.
 		"fg": 1, "bg": 4, "sky": Color(0.75, 0.82, 0.9), "difficulty": 1.45,
+		"background": "neon_street",
 		"map": [
 			"##############################################################################################################",
 			"#...................................................................................................#........#",
@@ -145,6 +150,7 @@ const LEVELS := [
 	},
 	{ # Level 4 - boss arena: corridor, then the gate shuts and the camera locks.
 		"fg": 2, "bg": 5, "sky": Color(0.24, 0.18, 0.35), "difficulty": 1.0,
+		"background": "city_skyline", "background_tint": Color(0.55, 0.45, 0.75),
 		"map": [
 			"################################################",
 			"###########################....................#",
@@ -175,6 +181,7 @@ var toxic_scene: PackedScene = load("res://objects/hazards/toxic.tscn")
 var laser_scene: PackedScene = load("res://objects/hazards/laser.tscn")
 var hammer_scene: PackedScene = load("res://objects/hazards/hammer.tscn")
 var blade_scene: PackedScene = load("res://objects/hazards/blade.tscn")
+const MUSIC := "res://assets/audio/music/cyberpunk_street.ogg"
 
 
 func _ready() -> void:
@@ -237,6 +244,13 @@ func _build_level(index: int, tileset: TileSet) -> void:
 	root.set_script(load("res://levels/shared/level.gd"))
 	root.set("number", index + 1)
 	root.set("sky", def.sky)
+	root.set("music", load(MUSIC))
+
+	var background := CanvasLayer.new()
+	background.name = "CityBackground"
+	background.set_script(load("res://levels/shared/level_background.gd"))
+	background.set("art", def.get("background", "city_skyline"))
+	background.set("tint", def.get("background_tint", Color.WHITE))
 
 	var bg := TileMapLayer.new()
 	bg.name = "Background"
@@ -244,6 +258,7 @@ func _build_level(index: int, tileset: TileSet) -> void:
 	var fg := TileMapLayer.new()
 	fg.name = "Tiles"
 	fg.tile_set = tileset
+	_add(root, background)
 	_add(root, bg)
 	_add(root, fg)
 

@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/level_test/test_level_backgrounds.gd" id="1"]
+
+[node name="TestLevelBackgrounds" type="Node"]
+script = ExtResource("1")
