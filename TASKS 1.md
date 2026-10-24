@@ -2,6 +2,8 @@
 
 Team: André, Emanuel, João, Miguel, Pedro, Yuri. One package per person.
 
+Implementation reviewed against the current code on **2026-10-24**: see [done / partial / pending by package](docs/implementation-status.md). Package 3's checklist below records the current implementation; unchecked items are still partial or deferred. Other packages' original requirements remain below for their owners.
+
 ## Design decisions
 
 - Player and JARVIS both shoot. JARVIS fires faster/harder the more tokens he has.
@@ -59,22 +61,26 @@ Owner: TBD
 Owns: real `GameState`, `objects/token/`, `ui/`, scene manager
 
 - Damage system:
-  - Shared `Health`, `Hitbox`, `Hurtbox` components in `components/damage/` (stub with `take_damage` at kickoff so nobody waits)
-  - Teams via collision layers: player/JARVIS hits only enemies, enemies/hazards hit only the player
-  - Invincibility frames, shield/dash invulnerability, instant-kill pits
-  - Kill credit (`source`) so JARVIS can roast whoever got the kill
-  - HP and damage balance table
+  - [x] Shared `Health`, `Hitbox`, `Hurtbox` components in `components/damage/`
+  - [x] Teams via collision layers: player/JARVIS hits only enemies, enemies/hazards hit only the player
+  - [x] Invincibility frames, shield/dash invulnerability, instant-kill pits
+  - [x] Kill credit (`source`) so JARVIS can roast whoever got the kill
+  - [x] HP and damage balance table in `tests/game_logic/README.md`
 - Game logic:
-  - Token costs and `spend_tokens`
-  - Trust decay per level, feeding, disabling JARVIS at 0
-  - Kill-doubt chance growing per level
-- Tokens: small and big pickups
-- Scene manager: menu -> intro -> levels 1-4 -> boss -> credits
-- HUD: trust bar (top), token counter, boss health bar
-- Menus: main menu, pause, settings (volume)
-- Enemy and token placement in levels 1-4 (in `level_XX_entities.tscn`)
-- Intro and twist cutscenes
-- UI and token pickup sounds
+  - [x] Token costs and `spend_tokens`
+  - [x] Trust decay per level, feeding, disabled-state API at 0; Package 2 must apply it to future shooting/abilities
+  - [x] Kill-doubt chance growing per level
+- [x] Tokens: small and big pickups
+- [ ] Full scene flow: menu -> intro -> levels 1-4 works; actual boss -> credits still needs Packages 4/6
+- [x] HUD: top trust bar, token counter, boss-signal health bar, bottom player health bar
+- [x] Menus: main menu, pause, settings (volume and touch controls)
+- [x] Enemy and token placement in levels 1-4 (in `level_XX_entities.tscn`); robots remain replaceable placeholders
+- [ ] Intro and twist cutscenes: existing text crawl only; story cutscenes deferred
+- [x] UI and token pickup sounds
+- [x] Full-run timer, level splits, deaths and saved personal best; pause stops time, chapter select/restarts are practice
+- [x] Self-hosted leaderboard client, API, SQLite persistence and Docker deployment files
+- [ ] Deploy leaderboard to `leaderboard-gamejam2026.suricata-lab.com`, enable `leaderboard.cfg`, and test the published itch.io build
+- [ ] End-to-end full-run score submission after the real boss emits `boss_defeated`
 
 ## Package 4 - Enemies & Boss
 

@@ -15,6 +15,7 @@ signal jarvis_enabled_changed(enabled: bool)
 signal level_started(level: int)
 signal token_collected(value: int)
 signal ability_used(ability: StringName, cost: int)
+signal run_finished(result: Dictionary)
 
 const MAX_TRUST := 100.0
 const ABILITY_COSTS := {&"dash": 1, &"shield": 2, &"boost_jump": 3}
@@ -49,21 +50,31 @@ var jarvis_enabled: bool:
 
 var gameplay_active: bool = false
 var _rng := RandomNumberGenerator.new()
+var run_clock := RunClock.new()
+var leaderboard := LeaderboardClient.new()
 
 
 func _ready() -> void:
+	add_child(leaderboard)
+	run_finished.connect(leaderboard.offer_result)
 	_rng.randomize()
 	enemy_killed.connect(_on_enemy_killed)
 	player_died.connect(_on_player_died)
-	boss_defeated.connect(func() -> void: gameplay_active = false)
+	level_completed.connect(run_clock.record_level)
+	level_completed.connect(leaderboard.checkpoint)
+	run_clock.finished.connect(func(result: Dictionary) -> void: run_finished.emit(result))
+	boss_defeated.connect(_on_boss_defeated)
 
 
 func _process(delta: float) -> void:
+	run_clock.advance(delta, gameplay_active)
 	if gameplay_active and not jarvis_hostile and current_level in range(1, 5):
 		add_trust(-TRUST_DECAY[current_level - 1] * delta)
 
 
 func reset_run() -> void:
+	leaderboard.abandon_run()
+	run_clock.reset()
 	gameplay_active = false
 	jarvis_hostile = false
 	current_level = 0
@@ -72,9 +83,21 @@ func reset_run() -> void:
 
 
 func begin_level(level: int) -> void:
+	run_clock.enter_level(level)
 	current_level = clampi(level, 1, 4)
 	gameplay_active = true
 	level_started.emit(current_level)
+
+
+## New Game arms a full run; chapter select, direct scene runs and restarts stay practice.
+func prepare_full_run() -> void:
+	run_clock.reset(true)
+	leaderboard.start_run()
+
+
+func _on_boss_defeated() -> void:
+	run_clock.finish()
+	gameplay_active = false
 
 
 func add_tokens(n: int) -> void:
@@ -129,5 +152,6 @@ func _on_enemy_killed(_enemy: Node, killer: Node) -> void:
 
 
 func _on_player_died() -> void:
+	run_clock.record_death()
 	if jarvis_enabled:
 		jarvis_say.emit(Dialogue.get_line("death", current_level), "smug")

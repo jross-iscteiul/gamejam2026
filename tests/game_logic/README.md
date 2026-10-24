@@ -6,26 +6,34 @@ Press **F6** on `play_package3.tscn` for a playable test using the current level
 
 Touch inputs are released on pause, canceled touches, window focus loss, death, disabling the setting and level transitions. The HUD owns the pads; the player has a small `set_touch_input(active, aim_direction, shooting)` adapter to prevent movement-pad touches from becoming mouse shots. Input-map and movement tuning remain unchanged.
 
-The playground adds test-only controls: **T** gives 10 tokens, **F** feeds JARVIS, **Y** sets trust to zero, **K** damages the player, **right click** tests paid shield, **B** buys an extra jump, and **G** toggles a sample boss health bar. The real JARVIS controller does not exist in this checkout; this adapter is only loaded by the playground. Production ability inputs, shooting scaling, and JARVIS appearance remain Package 2's responsibility. The existing player dash stays available as Package 1 implemented it.
+The playground adds test-only controls: **T** gives 10 tokens, **F** feeds JARVIS, **Y** sets trust to zero, **K** damages the player, **right click** tests paid shield, **B** buys an extra jump, and **G** toggles a sample boss health bar. JARVIS now spawns, follows/bobs/tilts and changes tint at zero trust. Its real shooting, paid ability inputs, speech bubbles, moods and audio are still pending; the playground adapter remains test-only. The existing player dash stays available as Package 1 implemented it.
+
+The top HUD now shows run time; player health is a bar at the bottom, between the mobile controls. **New Game** starts a full-run timer when level 1 begins. Intro/menu/loading time and pause are excluded; deaths/respawns retain time. Chapter Select, direct F6 runs and Restart Level are practice. Only an ordered level 1–4 route ending in `boss_defeated` can set a saved personal best or offer a leaderboard score. Since the real boss is not implemented yet, entering its arena does not finish a run.
+
+The main and pause menus have a Leaderboard page. The self-hosted API is prepared for **leaderboard-gamejam2026.suricata-lab.com** and is disabled in `leaderboard.cfg` until deployed. See [homelab setup](../../server/leaderboard/README.md). No LootLocker account or API key is required. The game exports only its API URL; the backend and database stay on your server.
+
+For the current done/partial/pending review of **all six packages**, see [implementation status](../../docs/implementation-status.md). The Package 3 checklist is also marked in `TASKS 1.md`.
 
 ## Automated checks
 
 ```powershell
 godot --headless --path . res://tests/game_logic/test_package3.tscn
 godot --headless --path . res://tests/game_logic/test_touch_controls.tscn
+godot --headless --path . res://tests/game_logic/test_run_clock.tscn
+godot --headless --path . res://tests/game_logic/test_leaderboard_client.tscn
 ```
 
 Checks the economy, immunity, team filtering, real coin and projectile physics, kill source, death/respawn, all four placements, HUD, pause, volume controls and chapter restart. Returns exit code 1 on failure. For optional rendered UI captures under `.godot/`, run the same scene without `--headless` and append `-- --visual`.
 
 The touch suite sends real multi-finger viewport events to the existing level/player and checks movement, jump, dash, aiming/firing, independent finger releases, cancellation, preference persistence and cleanup on pause/focus/death/scene changes. Both suites run in CI. Physical-phone testing is still useful for device-specific browser layout and ergonomics.
 
-Existing level flow, moving-platform and player-movement suites pass. The movement-gate suite passes 15/16: `L1 tunnel pit4 / jump+dash` also fails on the original HEAD checkout under Godot 4.7.2; this is a pre-existing level/player issue. That suite currently prints failures but exits with code 0. The engine also reports a Windows certificate-store error in this sandbox, including on the original checkout; gameplay does not use networking.
+Fresh checks on the current code pass level flow, moving platforms, player movement, JARVIS follow, level backgrounds/music, hazard placement and individual hazards. The movement-gate suite now passes **16/16**; the earlier tunnel-dash failure no longer reproduces with the current levels. It is now included in CI, which also checks printed `FAIL` lines because that suite can exit 0 despite failed assertions. The engine reports a Windows certificate-store error in this sandbox; this does not affect these offline tests.
 
 ## Balance and public API
 
 | Item | Default |
 |---|---|
-| Player HP | 3 |
+| Player HP | 10 in the current player scene (shared Health component default remains 3) |
 | Player shot | 1 damage, 6 shots/second (existing player) |
 | Robot HP | 3, editable per instance |
 | Robot contact / shot | 1 damage |
@@ -46,6 +54,8 @@ All original `GameState` signals and function signatures remain. Package 2 shoul
 GameState selects existing `Dialogue` lines on kills/deaths and emits `jarvis_say`; Package 2 can render that signal without selecting the same line again. Kill doubt changes the chosen roast, never the real killer credited in `enemy_killed`.
 
 `Health.take_damage(amount, source)` rejects nonpositive damage and emits `damaged`, `changed(current, maximum)` and `died(source)`. `grant_invulnerability(seconds)` is independent of the existing `invulnerable` shield flag. `restore()` refills health; `kill(source)` bypasses immunity. Hurtboxes filter hostile collision layers and deduplicate a contact observed by both areas. Contact hazards can enable `Hitbox.continuous` to hit again after immunity expires. Keep enemy-death emission in the enemy controller (Health does not emit `enemy_killed` itself).
+
+`GameState.run_clock` owns timing and practice eligibility. `prepare_full_run()` arms New Game; `begin_level()` starts/continues the timer; `level_completed` records splits/checkpoints; `boss_defeated` stops the timer and emits `run_finished(result)`. The result contains `ruleset`, integer `elapsed_ms`, four `splits_ms`, `deaths` and client eligibility. Local PB lives in `user://run_records.cfg`. The optional client registers an in-memory server run token at New Game, retries ordered checkpoints, and submits only when the player explicitly chooses a public name and Submit My Run. Online results remain honour-based, as documented in the server README.
 
 ## Ownership and integration
 
