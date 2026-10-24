@@ -70,6 +70,7 @@ var _last_tap_direction: int = 0
 var _last_tap_time_msec: int = 0
 var _dash_time_left: float = 0.0
 var _dash_cooldown_left: float = 0.0
+var _knockback_left: float = 0.0
 var _is_dead: bool = false
 var _death_tween: Tween
 var _touch_active: bool = false
@@ -146,9 +147,12 @@ func _move(delta: float) -> void:
 			velocity.y *= jump_cut
 
 		var acceleration := ground_acceleration if on_floor else air_acceleration
-		# Clamp first so dash speed doesn't carry over once the dash ends.
-		var speed_x := clampf(velocity.x, -move_speed, move_speed)
-		velocity.x = move_toward(speed_x, input_x * move_speed, acceleration * delta)
+		if _knockback_left > 0.0: # let a hazard push play out before steering resumes
+			_knockback_left -= delta
+		else:
+			# Clamp first so dash speed doesn't carry over once the dash ends.
+			var speed_x := clampf(velocity.x, -move_speed, move_speed)
+			velocity.x = move_toward(speed_x, input_x * move_speed, acceleration * delta)
 		if input_x != 0.0:
 			facing = 1 if input_x > 0.0 else -1
 			_move_direction = facing
@@ -196,6 +200,15 @@ func dash(direction: Vector2) -> void:
 	_can_air_dash = is_on_floor()
 
 
+## Hazard API: push the player (e.g. hammer hits). Ignored while dead.
+func apply_knockback(impulse: Vector2) -> void:
+	if _is_dead:
+		return
+	velocity = impulse
+	_dash_time_left = 0.0
+	_knockback_left = 0.2
+
+
 ## Player API: one extra air jump, kept until used.
 func boost_jump() -> void:
 	_air_jumps_left += 1
@@ -235,6 +248,7 @@ func respawn() -> void:
 	velocity = Vector2.ZERO
 	_dash_time_left = 0.0
 	_dash_cooldown_left = 0.0
+	_knockback_left = 0.0
 	_air_jumps_left = air_jumps
 	_can_air_dash = true
 	_camera.reset_smoothing()

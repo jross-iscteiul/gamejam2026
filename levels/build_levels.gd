@@ -8,7 +8,13 @@ extends Node
 ##          H..h moving platform, horizontal (H = centre of the 3-tile platform, h = where it travels to)
 ##          V/v  moving platform, vertical (V = start centre, v = end, same column)
 ##          F..f / E/e  same as H..h / V/v but fast (harder to ride)
-##          ~ pit bottom (respawn at last checkpoint)   C checkpoint
+##          ~ pit bottom (instant respawn at last checkpoint, drawn as harmless lava)   C checkpoint
+##          Hazards (objects/hazards/, scaled by the level's "difficulty"):
+##          R lava (instant death)   W toxic waste (1 HP while inside); a run of cells = one pool
+##          Z..z laser between two emitters (same row or column)   M swinging hammer (pivot cell)
+##          B fixed spinning blade   S..s blade sliding between S and s (same row or column)
+## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
+##            all levels play MUSIC on the Music bus.
 
 const TILE := 32
 const TILESET_PATH := "res://levels/shared/tileset.tres"
@@ -24,7 +30,8 @@ const SOURCES := [
 
 const LEVELS := [
 	{ # Level 1 - the docks: long run with steps, dips and an optional upper route.
-		"fg": 0, "bg": 3, "sky": Color(0.835, 0.902, 0.961),
+		"fg": 0, "bg": 3, "sky": Color(0.835, 0.902, 0.961), "difficulty": 1.0,
+		"background": "city_skyline",
 		"map": [
 			"##################################################################################################################################",
 			"#..................................................................####################..........................................#",
@@ -41,9 +48,9 @@ const LEVELS := [
 			"#.................................................C................####################...######.....####........................#",
 			"#........................################.......#############......####################..........########........................#",
 			"#........................################.......#############....................................########...................D....#",
-			"#............####........################.......#############...C................................#################################",
+			"#............####........################.......#############...C.....................C..........##########RRR####################",
 			"#............####........################.......###########################....###################################################",
-			"#..P.........####........################.......###########################....###################################################",
+			"#..P.........####S...s...################.......###########################....###################################################",
 			"#########################################.......###########################....###################################################",
 			"#########################################.......###########################....###################################################",
 			"#########################################.......###########################....###################################################",
@@ -51,7 +58,8 @@ const LEVELS := [
 		],
 	},
 	{ # Level 2 - the shaft: climb zig-zag platforms, cross the top, then a long drop (future fall damage) to the door.
-		"fg": 1, "bg": 4, "sky": Color(0.835, 0.902, 0.961),
+		"fg": 1, "bg": 4, "sky": Color(0.835, 0.902, 0.961), "difficulty": 1.2,
+		"background": "neon_night",
 		# zoom out + look down over the descent so the next platform is always on screen
 		"camera_zones": [Rect2i(30, 1, 39, 50)],
 		"map": [
@@ -73,9 +81,9 @@ const LEVELS := [
 			"#.-----------................########.......#######..F............f..#",
 			"#.-##########................########.......#######..................#",
 			"#.-----------................########.......#######..................#",
+			"#Z..........................z########.......#######Z................z#",
 			"#............................########.......#######..................#",
-			"#............................########.......#######..................#",
-			"#............................########.......#######..................#",
+			"#................C...........########.......#######..................#",
 			"#...............###########..########.......#######..................#",
 			"#............................########.......#######..f............F..#",
 			"#............................########.......#######..................#",
@@ -93,9 +101,9 @@ const LEVELS := [
 			"#............................########.......#######........e.........#",
 			"#.............V.###########..########.......#######..................#",
 			"#............................########.......#######..F............f..#",
-			"#............................########.......#######..................#",
+			"#Z..........................z########.......#######..................#",
 			"#............................########.......#######.----------------.#",
-			"#............................########.......#######.----------------.#",
+			"#............................########.......#######Z----------------z#",
 			"#..##########................########.......#######.----------------.#",
 			"#............................########.......#######.----------------.#",
 			"#.-----------................########.......#######..................#",
@@ -106,41 +114,43 @@ const LEVELS := [
 			"#.-----------................########.......#######..................#",
 			"#.-----------................########.......#######..................#",
 			"#...P........................########.......#######.............D....#",
-			"#####################################.......##########################",
+			"#######################WWWWW#########.......##########################",
 			"#####################################~~~~~~~##########################",
 		],
 	},
 	{ # Level 3 - control room: climb to the upper deck lever, drop down, pass the opened gate to the door.
-		"fg": 1, "bg": 4, "sky": Color(0.75, 0.82, 0.9),
+		"fg": 1, "bg": 4, "sky": Color(0.75, 0.82, 0.9), "difficulty": 1.45,
+		"background": "neon_street",
 		"map": [
 			"##############################################################################################################",
 			"#...................................................................................................#........#",
 			"#...........................................-----------------------.................................#........#",
 			"#...---------------.....---------------.....-----------------------.................................#........#",
-			"#...---------------.....---------------.....-----------------------.................................#........#",
-			"#...---------------.....---------------.....-----------------------.................................#........#",
+			"#...---------------.....---------------....###---------------------........###......................#........#",
+			"#...---------------.....---------------.....M----------------------.........M.......................#........#",
 			"#...---------------.....---------------.............................................................#.------.#",
 			"#...---------------.................................................................................#.------.#",
-			"#.............................................................................L.....................#.------.#",
+			"#........................................C..........................C.........L.....................#.------.#",
 			"#.......................................#############.H..........h.##############...................#.------.#",
 			"#...................................................................................................#.------.#",
 			"#..............................######...............................................................#.------.#",
-			"#...........................................-------------------------------.........................#.------.#",
+			"#............................Z..............-------------------------------.........................#.------.#",
 			"#...........................................-------------------------------.........................#........#",
 			"#...........................................-------------------------------.........................#........#",
-			"#...........................................-------------------------------.........................#........#",
+			"#............................z..............-------------------------------.........................#........#",
 			"#.....................######................-------------------------------.........................#........#",
-			"#...................................................................................................#........#",
+			"#...................Z...............................................................................#........#",
 			"#.......................................................####........................................G........#",
 			"#.......................................................####..........####..........................G........#",
-			"#..P....................................................####..........####.......C..................G....D...#",
-			"#####################...############################################################..........################",
+			"#..P................z...................................####S........s####.......C..................G....D...#",
+			"#####################...#######################WWWW###########WWWWW#################..........################",
 			"####################################################################################..........################",
 			"####################################################################################~~~~~~~~~~################",
 		],
 	},
 	{ # Level 4 - boss arena: corridor, then the gate shuts and the camera locks.
-		"fg": 2, "bg": 5, "sky": Color(0.24, 0.18, 0.35),
+		"fg": 2, "bg": 5, "sky": Color(0.24, 0.18, 0.35), "difficulty": 1.0,
+		"background": "city_skyline", "background_tint": Color(0.55, 0.45, 0.75),
 		"map": [
 			"################################################",
 			"###########################....................#",
@@ -153,7 +163,7 @@ const LEVELS := [
 			"#..P...-------....------..O......######........#",
 			"#......-------....------..O....................#",
 			"#.........................O...T...........K....#",
-			"################################################",
+			"############R#######R###########################",
 			"################################################",
 		],
 	},
@@ -166,6 +176,12 @@ var trigger_scene: PackedScene = load("res://levels/shared/boss_trigger.tscn")
 var player_scene: PackedScene = load("res://characters/player/player.tscn")
 var platform_scene: PackedScene = load("res://objects/platforms/moving_platform.tscn")
 var checkpoint_scene: PackedScene = load("res://levels/shared/checkpoint.tscn")
+var lava_scene: PackedScene = load("res://objects/hazards/lava.tscn")
+var toxic_scene: PackedScene = load("res://objects/hazards/toxic.tscn")
+var laser_scene: PackedScene = load("res://objects/hazards/laser.tscn")
+var hammer_scene: PackedScene = load("res://objects/hazards/hammer.tscn")
+var blade_scene: PackedScene = load("res://objects/hazards/blade.tscn")
+const MUSIC := "res://assets/audio/music/cyberpunk_street.ogg"
 
 
 func _ready() -> void:
@@ -222,11 +238,19 @@ func _paint(layer: TileMapLayer, cells: Dictionary, source: int) -> void:
 func _build_level(index: int, tileset: TileSet) -> void:
 	var def: Dictionary = LEVELS[index]
 	var map: Array = def.map
+	var difficulty: float = def.get("difficulty", 1.0)
 	var root := Node2D.new()
 	root.name = "Level%d" % (index + 1)
 	root.set_script(load("res://levels/shared/level.gd"))
 	root.set("number", index + 1)
 	root.set("sky", def.sky)
+	root.set("music", load(MUSIC))
+
+	var background := CanvasLayer.new()
+	background.name = "CityBackground"
+	background.set_script(load("res://levels/shared/level_background.gd"))
+	background.set("art", def.get("background", "city_skyline"))
+	background.set("tint", def.get("background_tint", Color.WHITE))
 
 	var bg := TileMapLayer.new()
 	bg.name = "Background"
@@ -234,6 +258,7 @@ func _build_level(index: int, tileset: TileSet) -> void:
 	var fg := TileMapLayer.new()
 	fg.name = "Tiles"
 	fg.tile_set = tileset
+	_add(root, background)
 	_add(root, bg)
 	_add(root, fg)
 
@@ -265,10 +290,32 @@ func _build_level(index: int, tileset: TileSet) -> void:
 				"C": _add(root, checkpoint_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 				"~":
 					if map[y][x - 1] != "~": # one trigger per run of pit cells
-						var run := 1
-						while map[y][x + run] == "~":
-							run += 1
-						_add_area(root, "Pit", "res://objects/hazards/pit.gd", Rect2i(x, y, run, 1))
+						_add_area(root, "Pit", "res://objects/hazards/pit.gd", Rect2i(x, y, _run(map, p), 1))
+						var glow = _add(root, lava_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
+						glow.size = Vector2(_run(map, p) * TILE, TILE)
+						glow.damaging = false # the Pit trigger handles it (instant reset, bypasses shields)
+				"R", "W":
+					if map[y][x - 1] != ch: # one pool per run of cells
+						var pool = _add(root, (lava_scene if ch == "R" else toxic_scene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
+						pool.size = Vector2(_run(map, p) * TILE, TILE)
+						pool.difficulty = difficulty
+				"Z":
+					var end := _pair_end(map, p, "z")
+					var first := Vector2i(mini(p.x, end.x), mini(p.y, end.y))
+					var laser = _add(root, laser_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(first * TILE) + Vector2(TILE, TILE) / 2.0)
+					laser.vertical = end.x == p.x
+					laser.length = float(absi(end.x - p.x) + absi(end.y - p.y)) * TILE
+					laser.phase = snappedf(x * 0.08, 0.01) # rows of lasers fire as a wave along the run
+					laser.difficulty = difficulty
+				"M":
+					var hammer = _add(root, hammer_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE) + Vector2(TILE / 2.0, 0))
+					hammer.phase = snappedf(x * 0.37, 0.01) # neighbouring hammers swing out of step
+					hammer.difficulty = difficulty
+				"B", "S":
+					var blade = _add(root, blade_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
+					if ch == "S":
+						blade.travel = Vector2((_pair_end(map, p, "s") - p) * TILE)
+					blade.difficulty = difficulty
 				"L": nodes.lever = _add(root, lever_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 				"T":
 					nodes.trigger = _add(root, trigger_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
@@ -314,8 +361,9 @@ func _build_level(index: int, tileset: TileSet) -> void:
 	# Package 3 owns entity placements; preserve the instance when regenerating level geometry.
 	var entities_path := "res://levels/level_%02d/level_%02d_entities.tscn" % [index + 1, index + 1]
 	if ResourceLoader.exists(entities_path):
-		var entities: PackedScene = load(entities_path)
-		_add(root, entities.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE))
+		var entities: Node = (load(entities_path) as PackedScene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+		entities.name = "Entities"
+		_add(root, entities)
 
 	var scene := PackedScene.new()
 	scene.pack(root)
@@ -336,6 +384,31 @@ func _add_area(root: Node, area_name: String, script: String, rect: Rect2i) -> v
 	shape.shape.size = Vector2(rect.size * TILE)
 	_add(root, area, Vector2(rect.position * TILE))
 	_add(area, shape, Vector2(rect.size * TILE) / 2.0)
+
+
+## Length of the horizontal run of identical cells starting at p.
+func _run(map: Array, p: Vector2i) -> int:
+	var run := 1
+	while map[p.y][p.x + run] == map[p.y][p.x]:
+		run += 1
+	return run
+
+
+## Nearest end marker on the same row, else on the same column (lasers, sliding blades).
+func _pair_end(map: Array, from: Vector2i, marker: String) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	for x in map[from.y].length():
+		if map[from.y][x] == marker and (best.x < 0 or absi(x - from.x) < absi(best.x - from.x)):
+			best = Vector2i(x, from.y)
+	if best.x >= 0:
+		return best
+	for y in map.size():
+		if map[y][from.x] == marker and (best.x < 0 or absi(y - from.y) < absi(best.y - from.y)):
+			best = Vector2i(from.x, y)
+	if best.x < 0:
+		push_error("no end marker '%s' for %s" % [marker, from])
+		return from
+	return best
 
 
 ## Find the lowercase end marker for a moving platform on the same row or column (either direction).
