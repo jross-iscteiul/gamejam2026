@@ -2,15 +2,22 @@
 
 Press **F6** on `play_package3.tscn` for a playable test using the current level 1 and player. Press **F5** for the main menu, existing intro, and levels 1–4. Chapter Select starts any existing level without the intro. Normal HUD controls: **Feed / 3** restores trust, **Esc / P** pauses; Settings changes and saves Master, Music and SFX volume.
 
+**Settings → Touch Controls** is available in the main menu and pause menu. **Auto** (default) detects touch devices; **On** always shows the pads; **Off** hides them. The preference is saved between sessions. Left/right pads move, **Jump** supports the existing double jump, **Dash** dashes, and **Use** operates doors/levers. Hold and drag **Aim / Fire** to aim and shoot in any direction while other fingers move or jump. The existing top HUD buttons feed JARVIS and pause. Landscape gives the controls more room. A physical mouse still works on devices with both mouse and touch.
+
+Touch inputs are released on pause, canceled touches, window focus loss, death, disabling the setting and level transitions. The HUD owns the pads; the player has a small `set_touch_input(active, aim_direction, shooting)` adapter to prevent movement-pad touches from becoming mouse shots. Input-map and movement tuning remain unchanged.
+
 The playground adds test-only controls: **T** gives 10 tokens, **F** feeds JARVIS, **Y** sets trust to zero, **K** damages the player, **right click** tests paid shield, **B** buys an extra jump, and **G** toggles a sample boss health bar. The real JARVIS controller does not exist in this checkout; this adapter is only loaded by the playground. Production ability inputs, shooting scaling, and JARVIS appearance remain Package 2's responsibility. The existing player dash stays available as Package 1 implemented it.
 
 ## Automated checks
 
 ```powershell
 godot --headless --path . res://tests/game_logic/test_package3.tscn
+godot --headless --path . res://tests/game_logic/test_touch_controls.tscn
 ```
 
 Checks the economy, immunity, team filtering, real coin and projectile physics, kill source, death/respawn, all four placements, HUD, pause, volume controls and chapter restart. Returns exit code 1 on failure. For optional rendered UI captures under `.godot/`, run the same scene without `--headless` and append `-- --visual`.
+
+The touch suite sends real multi-finger viewport events to the existing level/player and checks movement, jump, dash, aiming/firing, independent finger releases, cancellation, preference persistence and cleanup on pause/focus/death/scene changes. Both suites run in CI. Physical-phone testing is still useful for device-specific browser layout and ergonomics.
 
 Existing level flow, moving-platform and player-movement suites pass. The movement-gate suite passes 15/16: `L1 tunnel pit4 / jump+dash` also fails on the original HEAD checkout under Godot 4.7.2; this is a pre-existing level/player issue. That suite currently prints failures but exits with code 0. The engine also reports a Windows certificate-store error in this sandbox, including on the original checkout; gameplay does not use networking.
 

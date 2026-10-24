@@ -43,6 +43,7 @@ func _ready() -> void:
 		_home.add_child(GameUI.button("QUIT", func() -> void: get_tree().quit()))
 	_settings = VBoxContainer.new()
 	_settings.add_child(AudioSettings.new())
+	_settings.add_child(ControlSettings.new())
 	_settings.add_child(GameUI.button("BACK", func() -> void: _show_page(_home)))
 	content.add_child(_settings)
 	_chapters = VBoxContainer.new()

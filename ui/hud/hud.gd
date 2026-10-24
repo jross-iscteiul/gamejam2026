@@ -18,6 +18,7 @@ var _pause_title: Label
 var _speech_time: float = 0.0
 var _notice_time: float = 0.0
 var _click: AudioStream
+var _touch_controls: MobileTouchControls
 
 
 func _ready() -> void:
@@ -31,6 +32,8 @@ func _ready() -> void:
 	_root.theme = GameUI.theme()
 	add_child(_root)
 	_build_hud()
+	_touch_controls = MobileTouchControls.new()
+	_root.add_child(_touch_controls)
 	_build_pause()
 	GameState.tokens_changed.connect(_update_tokens)
 	GameState.trust_changed.connect(_update_trust)
@@ -154,6 +157,7 @@ func _build_pause() -> void:
 	column.add_child(_pause_actions)
 	_settings = VBoxContainer.new()
 	_settings.add_child(AudioSettings.new())
+	_settings.add_child(ControlSettings.new())
 	_settings.add_child(GameUI.button("BACK", _hide_settings))
 	column.add_child(_settings)
 	_settings.hide()
@@ -226,6 +230,7 @@ func notify(text: String) -> void:
 
 
 func set_paused(active: bool) -> void:
+	_touch_controls.set_gameplay_paused(active)
 	get_tree().paused = active
 	_overlay.visible = active
 	_hide_settings()
