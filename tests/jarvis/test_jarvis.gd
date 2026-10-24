@@ -3,6 +3,8 @@ extends Node
 # Run:  godot --headless --path . res://tests/jarvis/test_jarvis.tscn
 var _t := 0
 var _failed := false
+var _bob_min := INF
+var _bob_max := -INF
 
 
 func _ready() -> void:
@@ -28,7 +30,22 @@ func _physics_process(_delta: float) -> void:
 			return _finish()
 		_check(jarvis.global_position.distance_to(player.global_position) < 60.0, "JARVIS starts next to the player")
 		jarvis.global_position += Vector2(150, 0)
+	if _t == 30:
+		_bob_min = INF
+		_bob_max = -INF
+	if _t > 30 and _t < 90:
+		var y: float = jarvis.get_node("Body").position.y
+		_bob_min = minf(_bob_min, y)
+		_bob_max = maxf(_bob_max, y)
+	if _t == 20:
+		_check(absf(jarvis.get_node("Body").rotation) > 0.01, "JARVIS tilts while catching up")
 	if _t == 90:
+		_check(_bob_max - _bob_min > 2.0, "JARVIS bobs up and down")
+		_check(jarvis.get_node("Body").scale.x == player.get("facing"), "JARVIS faces the same way as the player")
+		player.set("facing", -player.get("facing"))
+	if _t == 91:
+		_check(jarvis.get_node("Body").scale.x == player.get("facing"), "JARVIS flips with the player")
+		player.set("facing", -player.get("facing"))
 		_check(jarvis.global_position.distance_to(player.global_position) < 60.0, "JARVIS catches up with the player")
 		player.global_position += Vector2(1000, 0)
 	if _t == 92:
