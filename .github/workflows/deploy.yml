@@ -91,6 +91,7 @@ jobs:
             tests/game_logic/test_touch_controls.tscn \
             tests/game_logic/test_run_clock.tscn \
             tests/game_logic/test_leaderboard_client.tscn \
+            tests/game_logic/test_placeholder_boss.tscn \
             tests/player_test/test_player_moves.tscn \
             tests/level_test/test_levels_flow.tscn \
             tests/level_test/test_moving_platforms.tscn \
