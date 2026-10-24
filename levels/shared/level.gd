@@ -3,6 +3,9 @@ extends Node2D
 
 @export var number := 1
 @export var sky := Color(0.835, 0.902, 0.961)
+
+@export var jarvis_scene: PackedScene = preload("res://characters/jarvis/jarvis.tscn")
+
 ## Looping track on the Music bus. Kept playing across levels so it does not restart at each door.
 @export var music: AudioStream
 
@@ -16,6 +19,8 @@ func _ready() -> void:
 	var size: Vector2i = $Tiles.tile_set.tile_size
 	lock_camera(Rect2(used.position * size, used.size * size))
 	camera.reset_smoothing()
+	if jarvis_scene and number in range(1, 5):
+		add_child(jarvis_scene.instantiate())
 	_play_music()
 
 

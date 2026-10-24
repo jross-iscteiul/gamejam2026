@@ -207,7 +207,7 @@ Enemy (CharacterBody2D)
 
 Bullet (Area2D or Node2D)
 └── Hitbox       (damage = 1)
-    └── CollisionShape2D
+	└── CollisionShape2D
 ```
 
 ## Collision layers
