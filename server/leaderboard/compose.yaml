@@ -1,0 +1,35 @@
+services:
+  leaderboard:
+    build: .
+    restart: unless-stopped
+    environment:
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://html-classic.itch.zone,https://jross-iscteiul.github.io,https://leaderboard-gamejam2026.suricata-lab.com}
+      TRUST_PROXY: "1"
+      MIN_RUN_MS: ${MIN_RUN_MS:-1000}
+    volumes:
+      - leaderboard_data:/data
+    expose:
+      - "8080"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      leaderboard:
+        condition: service_healthy
+volumes:
+  leaderboard_data:
+  caddy_data:
+  caddy_config:
