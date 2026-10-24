@@ -3,6 +3,7 @@ extends Node2D
 
 @export var number := 1
 @export var sky := Color(0.835, 0.902, 0.961)
+@export var jarvis_scene: PackedScene = preload("res://characters/jarvis/jarvis.tscn")
 
 @onready var camera: Camera2D = $Player/Camera2D
 
@@ -14,6 +15,8 @@ func _ready() -> void:
 	var size: Vector2i = $Tiles.tile_set.tile_size
 	lock_camera(Rect2(used.position * size, used.size * size))
 	camera.reset_smoothing()
+	if jarvis_scene and number in range(1, 5):
+		add_child(jarvis_scene.instantiate())
 
 
 func lock_camera(rect: Rect2) -> void:

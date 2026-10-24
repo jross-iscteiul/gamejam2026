@@ -67,7 +67,8 @@ jobs:
             tests/game_logic/test_touch_controls.tscn \
             tests/player_test/test_player_moves.tscn \
             tests/level_test/test_levels_flow.tscn \
-            tests/level_test/test_moving_platforms.tscn
+            tests/level_test/test_moving_platforms.tscn \
+            tests/jarvis/test_jarvis.tscn
           do
             timeout 90s godot --headless --path . "$scene" 2>&1 | tee "$RUNNER_TEMP/test.log"
             if grep -Eq '^FAIL |SCRIPT ERROR:|Parse Error:' "$RUNNER_TEMP/test.log"; then exit 1; fi
