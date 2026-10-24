@@ -64,6 +64,7 @@ jobs:
           set -euo pipefail
           for scene in \
             tests/game_logic/test_package3.tscn \
+            tests/game_logic/test_touch_controls.tscn \
             tests/player_test/test_player_moves.tscn \
             tests/level_test/test_levels_flow.tscn \
             tests/level_test/test_moving_platforms.tscn

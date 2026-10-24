@@ -72,6 +72,9 @@ var _dash_time_left: float = 0.0
 var _dash_cooldown_left: float = 0.0
 var _is_dead: bool = false
 var _death_tween: Tween
+var _touch_active: bool = false
+var _touch_aim := Vector2.RIGHT
+var _touch_shooting: bool = false
 
 @onready var _collision: CollisionShape2D = $CollisionShape2D
 @onready var _body: Node2D = $Body
@@ -150,8 +153,8 @@ func _move(delta: float) -> void:
 			facing = 1 if input_x > 0.0 else -1
 			_move_direction = facing
 		elif absf(velocity.x) <= 5.0:
-			var mouse_delta_x := get_global_mouse_position().x - global_position.x
-			if absf(mouse_delta_x) > 1.0:
+			var mouse_delta_x := _touch_aim.x if _touch_active else get_global_mouse_position().x - global_position.x
+			if absf(mouse_delta_x) > (0.05 if _touch_active else 1.0):
 				facing = 1 if mouse_delta_x > 0.0 else -1
 	_body.scale.x = facing
 
@@ -202,6 +205,14 @@ func boost_jump() -> void:
 func set_shield(active: bool) -> void:
 	shielded = active
 	_health.invulnerable = active
+
+
+## HUD adapter: avoid turning movement-pad touches into emulated mouse shots.
+func set_touch_input(active: bool, aim_direction: Vector2, shooting: bool) -> void:
+	_touch_active = active
+	if not aim_direction.is_zero_approx():
+		_touch_aim = aim_direction.normalized()
+	_touch_shooting = active and shooting
 
 
 func respawn() -> void:
@@ -265,8 +276,8 @@ func _on_damaged(_amount: float, _source: Node) -> void:
 
 func _aim() -> void:
 	_gun_pivot.position = Vector2(_skin.shoulder.x * facing, _skin.shoulder.y + FEET_Y)
-	var to_mouse := get_global_mouse_position() - _gun_pivot.global_position
-	if to_mouse.length_squared() > 1.0:
+	var to_mouse := _touch_aim if _touch_active else get_global_mouse_position() - _gun_pivot.global_position
+	if _touch_active or to_mouse.length_squared() > 1.0:
 		_aim_direction = to_mouse.normalized()
 	_gun_pivot.rotation = _aim_direction.angle()
 	# Mirror instead of rotating upside down when aiming left.
@@ -275,9 +286,10 @@ func _aim() -> void:
 
 func _shoot(delta: float) -> void:
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
-	if get_viewport().gui_get_hovered_control() != null:
+	if not _touch_shooting and get_viewport().gui_get_hovered_control() != null:
 		return
-	if not Input.is_action_pressed("shoot") or _fire_cooldown > 0.0:
+	var shooting := _touch_shooting if _touch_active else Input.is_action_pressed("shoot")
+	if not shooting or _fire_cooldown > 0.0:
 		return
 	_fire_cooldown = 1.0 / fire_rate
 

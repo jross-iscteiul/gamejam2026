@@ -14,11 +14,13 @@ The expected URL is **https://jross-iscteiul.github.io/gamejam2026/**. Until Pag
 
 - Installs **Godot 4.7.2 standard** and its matching web release template from official Godot release assets. The installation is cached between builds.
 - Imports the project so a clean checkout has its generated assets and script-class cache.
-- Runs Package 3 tests, player movement, level flow, and moving-platform tests. Nonzero exit codes, printed `FAIL` results and script errors fail the build; each scene has a timeout.
+- Runs Package 3 tests, multi-touch controls, player movement, level flow, and moving-platform tests. Nonzero exit codes, printed `FAIL` results and script errors fail the build; each scene has a timeout.
 - Exports the `Web` preset to `build/web/index.html` with **Thread Support off**, compatible with ordinary static HTTPS hosting.
 - Uploads a `web-game` artifact on every build and deploys to Pages only from `main`.
 
-The existing movement-gate suite is not a CI gate yet: its `L1 tunnel pit4 / jump+dash` check already fails on the original checkout. See `tests/game_logic/README.md`. Gameplay and other people's level/player files are unchanged by this hosting branch.
+The existing movement-gate suite is not a CI gate yet: its `L1 tunnel pit4 / jump+dash` check already fails on the original checkout. See `tests/game_logic/README.md`.
+
+The branch also adds **Settings → Touch Controls → Auto / On / Off** for mobile play. Auto detects touch devices; On/Off override detection, and the preference is saved. The HUD provides multi-touch movement, jump, dash, interact and drag-to-aim/fire pads. A small Player adapter supplies touch aiming/firing without changing movement tuning, levels or the input map.
 
 ## Local export
 
@@ -32,6 +34,6 @@ godot --headless --path . --export-release Web build/web/index.html
 
 Serve **all files** in `build/web/` through a local HTTP server and open `http://localhost:<port>/`; opening `index.html` directly from disk will not load the game. Godot's Run in Browser option is another way to preview the export. The same exported files can be zipped for itch.io. Exported files are ignored by Git and never need to be committed.
 
-`export_presets.cfg` excludes tests, the level generator and the build directory. It includes the font license and existing asset-license files. The menu, intro, character, levels, display settings and input map are unchanged.
+`export_presets.cfg` excludes tests, the level generator and the build directory. It includes the font license and existing asset-license files. The intro, levels, display settings and input map are unchanged.
 
 References: [Godot web export](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html), [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
