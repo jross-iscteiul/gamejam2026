@@ -43,8 +43,8 @@ Code review against `TASKS 1.md`, the root README and `tests/game_logic/README.m
 | Story intro/twist cutscenes | Deferred | Existing text crawl is not the planned story/twist sequence; previously excluded from this work |
 | UI sounds | Done | `ui/shared/game_ui.gd` |
 | Timer, splits, deaths, practice exclusion and local PB | Done | `autoload/run_clock.gd`; finish uses the real `boss_defeated` event |
-| Online leaderboard client/API/Docker files | Implemented, not deployed | `autoload/leaderboard_client.gd`, `server/leaderboard/`; disabled until homelab deployment |
-| Live itch.io leaderboard / genuine full-game completion | Pending | Deploy the API, enable config, finish the boss and test inside the actual itch.io iframe |
+| Online leaderboard client/API/Docker files | Deployed; game connection enabled | `autoload/leaderboard_client.gd`, `server/leaderboard/`; live HTTPS/API and itch.io CORS verified on 2026-10-24 |
+| Live itch.io leaderboard / genuine full-game completion | Pending | Re-export/upload the enabled game, finish the boss and test inside the actual itch.io iframe |
 
 ## Package 4 — Enemies and boss
 
@@ -88,7 +88,7 @@ Code review against `TASKS 1.md`, the root README and `tests/game_logic/README.m
 
 1. Complete JARVIS attacks/abilities and replace test robots with the final enemy scenes.
 2. Implement the boss and its real victory event; wire the final gap/twist and credits when those packages are ready. The timer/leaderboard must not finish on the arena placeholder.
-3. Deploy the prepared leaderboard app to the homelab, configure the actual itch.io iframe origin, enable `leaderboard.cfg`, then test public score submission. Names/times are client-reported; replay/server validation would be separate anti-cheat work.
+3. The homelab leaderboard is deployed and `leaderboard.cfg` is enabled. Re-export/upload the game, verify the actual itch.io iframe origin, then test public score submission after the boss is ready. Names/times are client-reported; replay/server validation would be separate anti-cheat work.
 4. Complete the remaining Package 1/5 movement/platform features and planned extras, or explicitly agree to cut them for the jam.
 5. Finish a full playthrough/balance pass, mobile/browser testing, and outstanding asset attribution checks in `credits/ASSETS.md` (including the existing Freepik TBD entry).
 

@@ -79,7 +79,8 @@ Owns: real `GameState`, `objects/token/`, `ui/`, scene manager
 - [x] UI and token pickup sounds
 - [x] Full-run timer, level splits, deaths and saved personal best; pause stops time, chapter select/restarts are practice
 - [x] Self-hosted leaderboard client, API, SQLite persistence and Docker deployment files
-- [ ] Deploy leaderboard to `leaderboard-gamejam2026.suricata-lab.com`, enable `leaderboard.cfg`, and test the published itch.io build
+- [x] Deploy leaderboard to `leaderboard-gamejam2026.suricata-lab.com`, verify HTTPS/API connectivity, and enable `leaderboard.cfg`
+- [ ] Re-export/upload the enabled game and test the published itch.io build
 - [ ] End-to-end full-run score submission after the real boss emits `boss_defeated`
 
 ## Package 4 - Enemies & Boss

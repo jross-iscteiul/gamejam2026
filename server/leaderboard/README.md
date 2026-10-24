@@ -1,6 +1,6 @@
 # Self-hosted leaderboard
 
-Target: **https://leaderboard-gamejam2026.suricata-lab.com**. This folder contains the app and deployment files for your homelab; it has not been deployed and does not alter DNS. The game remains hosted on itch.io; only the leaderboard API/database run here.
+Live API: **https://leaderboard-gamejam2026.suricata-lab.com**. Deployed in the homelab; HTTPS health and leaderboard reads were verified on 2026-10-24, including CORS/preflight for itch.io and the configured GitHub Pages origin. The Godot client also registered a temporary run and sent authenticated checkpoints 1–3 successfully; no test score was submitted. The game connection is enabled in `leaderboard.cfg`; export/upload this revision to connect the published game. Only the leaderboard API/database run here; the game remains hosted on itch.io. This folder contains the app and deployment files for future updates.
 
 The app uses Node 24's bundled SQLite and HTTP modules, with no npm dependencies. `/data` stores scores and run records persistently. The container runs as the `node` user. SQLite uses WAL mode and prepared statements. No admin key, shared browser secret, external account, or third-party leaderboard service is needed.
 
@@ -41,7 +41,7 @@ The supplied Caddyfile configures automatic HTTPS and forwards to the API. Named
 
 1. Check `/health` returns JSON with `ok: true` over trusted HTTPS.
 2. Set `ALLOWED_ORIGINS` to the origin of the **actual exported game's iframe**, which may be an `itch.zone` origin rather than the itch.io store page. The example includes `https://html-classic.itch.zone` and the existing GitHub Pages origin; verify these against your published build. Origins have no trailing path or slash.
-3. In the game's root `leaderboard.cfg`, keep the provided URL and set `enabled=true`; then export/upload the game again. It is disabled until the server is ready, so normal play/tests do not call an undeployed service.
+3. The game's root `leaderboard.cfg` already has the live URL and `enabled=true`. Export/upload this revision of the game; older exported builds retain their previous configuration. Automated tests explicitly disable or fake networking and do not use the live service.
 4. Start **New Game**, complete levels 1–4 and defeat the boss, then choose a public racer name and **Submit My Run**. Chapter Select and Restart Level are practice. The current checkout still lacks the real boss/credits ending, so normal gameplay cannot complete a full run until Package 4 emits `boss_defeated`.
 
 The UI also exposes Refresh in the main-menu and pause-menu Leaderboard pages. Names allow 2–16 ASCII letters, digits, spaces, underscores and hyphens. Names are public nicknames, not authenticated accounts; the server keeps the best time per case-insensitive name and ruleset. There is no ownership guarantee for a nickname.

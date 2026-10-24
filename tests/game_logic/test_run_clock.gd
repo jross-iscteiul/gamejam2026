@@ -86,6 +86,8 @@ func _run() -> void:
 
 func _test_hud() -> void:
 	get_tree().current_scene = null
+	var online_enabled := GameState.leaderboard.enabled
+	GameState.leaderboard.enabled = false # This integration test must stay offline.
 	GameState.reset_run()
 	GameState.prepare_full_run()
 	get_tree().change_scene_to_file("res://levels/level_01/level_01.tscn")
@@ -141,3 +143,4 @@ func _test_hud() -> void:
 		GameState.leaderboard.abandon_run()
 	get_tree().current_scene.queue_free()
 	await _frames()
+	GameState.leaderboard.enabled = online_enabled

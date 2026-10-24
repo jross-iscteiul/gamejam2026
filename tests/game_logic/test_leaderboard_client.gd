@@ -31,6 +31,7 @@ func _run() -> void:
 	var client := LeaderboardClient.new()
 	add_child(client)
 	client.transport = _fake
+	client.enabled = false
 	await client.refresh()
 	_check(_calls.is_empty(), "disabled integration makes no network calls")
 	client.enabled = true

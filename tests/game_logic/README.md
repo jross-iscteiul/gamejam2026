@@ -10,7 +10,7 @@ The playground adds test-only controls: **T** gives 10 tokens, **F** feeds JARVI
 
 The top HUD now shows run time; player health is a bar at the bottom, between the mobile controls. **New Game** starts a full-run timer when level 1 begins. Intro/menu/loading time and pause are excluded; deaths/respawns retain time. Chapter Select, direct F6 runs and Restart Level are practice. Only an ordered level 1–4 route ending in `boss_defeated` can set a saved personal best or offer a leaderboard score. Since the real boss is not implemented yet, entering its arena does not finish a run.
 
-The main and pause menus have a Leaderboard page. The self-hosted API is prepared for **leaderboard-gamejam2026.suricata-lab.com** and is disabled in `leaderboard.cfg` until deployed. See [homelab setup](../../server/leaderboard/README.md). No LootLocker account or API key is required. The game exports only its API URL; the backend and database stay on your server.
+The main and pause menus have a Leaderboard page. The self-hosted API is live at **leaderboard-gamejam2026.suricata-lab.com** and enabled in `leaderboard.cfg`. Re-export/upload this revision to connect the published game. See [homelab setup](../../server/leaderboard/README.md). No LootLocker account or API key is required. The game exports only its API URL; the backend and database stay on your server. Automated client and timer/HUD tests explicitly disable or fake networking, so they remain offline with the production connection enabled.
 
 For the current done/partial/pending review of **all six packages**, see [implementation status](../../docs/implementation-status.md). The Package 3 checklist is also marked in `TASKS 1.md`.
 
