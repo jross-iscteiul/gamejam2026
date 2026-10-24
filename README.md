@@ -4,6 +4,8 @@ A 2D pixel art platformer in Godot 4.7 (GL Compatibility), played in the browser
 
 The full task split per package is in [TASKS 1.md](TASKS%201.md).
 
+For automatic browser builds and GitHub Pages hosting, see [the web deployment guide](docs/github-pages.md).
+
 ## Getting started
 
 1. Install **Godot 4.7** (standard build, not .NET).
