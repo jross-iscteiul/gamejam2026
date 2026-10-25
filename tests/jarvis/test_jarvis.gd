@@ -1,10 +1,11 @@
 extends Node
-# Headless check for the JARVIS skeleton: spawns in levels, follows the player, reacts to trust.
+# Headless check for JARVIS: spawn, follow, bob, trust tint and spray shooting.
 # Run:  godot --headless --path . res://tests/jarvis/test_jarvis.tscn
 var _t := 0
 var _failed := false
 var _bob_min := INF
 var _bob_max := -INF
+var _home := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -29,6 +30,7 @@ func _physics_process(_delta: float) -> void:
 		if jarvis == null:
 			return _finish()
 		_check(jarvis.global_position.distance_to(player.global_position) < 60.0, "JARVIS starts next to the player")
+		_home = player.global_position
 		jarvis.global_position += Vector2(150, 0)
 	if _t == 30:
 		_bob_min = INF
@@ -54,12 +56,70 @@ func _physics_process(_delta: float) -> void:
 		_check(jarvis.get_node("Body").modulate != Color.WHITE, "JARVIS greys out at zero trust")
 		GameState.trust = 50.0
 		_check(jarvis.get_node("Body").modulate == Color.WHITE, "JARVIS recovers when trust returns")
+		player.global_position = _home
+	if _t == 100:
+		GameState.trust = GameState.MAX_TRUST
+		_check(is_equal_approx(jarvis.fire_rate(), jarvis.max_fire_rate), "full trust fires at max rate")
+		GameState.trust = GameState.MAX_TRUST * 0.5
+		_check(is_equal_approx(jarvis.fire_rate(), (jarvis.min_fire_rate + jarvis.max_fire_rate) * 0.5), "half trust fires at half way rate")
+		GameState.tokens = 1000
+		_check(is_equal_approx(jarvis.fire_rate(), (jarvis.min_fire_rate + jarvis.max_fire_rate) * 0.5), "tokens do not change fire rate")
+		_check_spray(jarvis)
+		GameState.trust = 0.0
+		_clear_bullets()
+	if _t == 160:
+		_check(get_tree().get_nodes_in_group("player_projectile").is_empty(), "disabled JARVIS fires no bullets")
+		GameState.trust = 100.0
+	if _t == 190:
+		var bullets := get_tree().get_nodes_in_group("player_projectile")
+		_check(not bullets.is_empty(), "JARVIS keeps shooting with no enemies around")
+		_check(bullets.all(func(b: Node) -> bool: return b.source == jarvis), "JARVIS bullets credit JARVIS for kills")
 		_finish()
+
+
+func _clear_bullets() -> void:
+	for bullet in get_tree().get_nodes_in_group("player_projectile"):
+		bullet.free()
 
 
 func _check(ok: bool, label: String) -> void:
 	print("PASS " if ok else "FAIL ", label)
 	_failed = _failed or not ok
+
+
+## Samples the spray: each slice gets its weight share, nothing lands outside the slices,
+## and facing left mirrors it. Reads spray_sectors so tuning the values never breaks the test.
+func _check_spray(jarvis: Node2D) -> void:
+	var samples := 6000
+	var sectors: Array[Vector4] = jarvis.spray_sectors
+	var total := 0.0
+	for sector in sectors:
+		total += sector.z
+	for side in [1, -1]:
+		jarvis.facing = side
+		var counts: Array[int] = []
+		counts.resize(sectors.size())
+		counts.fill(0)
+		var outside := 0
+		for i in samples:
+			var d: Vector2 = jarvis.spray_direction()
+			var deg := rad_to_deg(Vector2(d.x * side, d.y).angle())
+			var hit := false
+			for k in sectors.size():
+				if deg >= sectors[k].x - 0.5 and deg <= sectors[k].y + 0.5:
+					counts[k] += 1
+					hit = true
+					break
+			if not hit:
+				outside += 1
+		var ok := outside == 0
+		var shares: Array[String] = []
+		for k in sectors.size():
+			var share := counts[k] / float(samples)
+			ok = ok and absf(share - sectors[k].z / total) < 0.03
+			shares.append("%.0f%%" % (share * 100.0))
+		_check(ok, "spray facing %d matches slice weights: %s, outside %d / %d" % [side, ", ".join(shares), outside, samples])
+	jarvis.facing = 1
 
 
 func _finish() -> void:

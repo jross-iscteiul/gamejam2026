@@ -1,11 +1,15 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bjlrd7lmoew8r"]
 
-[ext_resource type="Script" path="res://characters/jarvis/jarvis.gd" id="1_jarvis"]
-[ext_resource type="Script" path="res://characters/jarvis/jarvis_body.gd" id="2_body"]
+[ext_resource type="Script" uid="uid://cdect1lmtrxsj" path="res://characters/jarvis/jarvis.gd" id="1_jarvis"]
+[ext_resource type="Script" uid="uid://jw7hdoap1lhe" path="res://characters/jarvis/jarvis_body.gd" id="2_body"]
+[ext_resource type="Script" path="res://characters/jarvis/spray_preview.gd" id="3_spray"]
 
-[node name="Jarvis" type="Node2D"]
+[node name="Jarvis" type="Node2D" unique_id=1599995692]
 z_index = 5
 script = ExtResource("1_jarvis")
 
-[node name="Body" type="Node2D" parent="."]
+[node name="Body" type="Node2D" parent="." unique_id=515093651]
 script = ExtResource("2_body")
+
+[node name="SprayPreview" type="Node2D" parent="."]
+script = ExtResource("3_spray")
