@@ -55,6 +55,15 @@ extends Node2D
 @export var mood_aliases: Dictionary[String, String] = {
 	"normal": "neutral", "smug": "happy", "sad": "annoyed", "angry": "furious"}
 
+@export_group("Offline")
+## At trust 0 JARVIS powers down: sinks toward the player's waist, droops nose-down, bobs
+## weakly, the rotor spins down and the screen goes dark. Feeding powers him back up.
+@export var offline_sink: float = 18.0 # pixels lower than the normal follow height
+@export var offline_droop_degrees: float = 25.0
+@export var offline_bob_scale: float = 0.25 # bob amplitude/speed multiplier when off
+@export var power_down_seconds: float = 1.2
+@export var power_up_seconds: float = 0.5
+
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
 
@@ -69,6 +78,8 @@ signal ability_denied(ability: StringName) # not enough online % or JARVIS offli
 
 var player: Player
 var mood: String = "neutral"
+## 1 = powered, 0 = fully powered down; eases between the two (see Offline settings).
+var power: float = 1.0
 var facing: int = 1
 var _bob_time: float = 0.0
 var _fire_cooldown: float = 0.0
@@ -96,6 +107,7 @@ func _ready() -> void:
 	ability_denied.connect(_on_ability_denied)
 	_low_trust_warned = GameState.trust < low_trust_threshold
 	_reset_idle()
+	power = 1.0 if GameState.jarvis_enabled else 0.0
 	_find_player()
 	if player:
 		global_position = _target_position()
@@ -105,6 +117,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(player) and not _find_player():
 		return
+	_tick_power(delta)
 	var previous := global_position
 	var target := _target_position()
 	if global_position.distance_to(target) > snap_distance:
@@ -142,7 +155,7 @@ func _update_mood() -> void:
 	if current == mood:
 		return
 	mood = current
-	body.set_face(mood if MOODS.has(mood) else "neutral")
+	body.set_face(mood if MOODS.has(mood) else ("off" if mood == "offline" else "neutral"))
 	mood_changed.emit(mood)
 
 
@@ -306,12 +319,21 @@ func _triangular(low: float, high: float, mode: float) -> float:
 	return high - sqrt((1.0 - u) * width * (high - mode))
 
 
+func _tick_power(delta: float) -> void:
+	var target := 1.0 if GameState.jarvis_enabled else 0.0
+	var seconds := power_up_seconds if target > power else power_down_seconds
+	power = move_toward(power, target, delta / maxf(seconds, 0.01))
+	body.power = power
+
+
 ## Visual-only motion on Body, so the follow position stays exact.
 func _animate_body(delta: float, speed_x: float) -> void:
-	_bob_time = fmod(_bob_time + delta * bob_speed, TAU)
-	body.position.y = sin(_bob_time) * bob_amplitude
+	var bob_scale := lerpf(offline_bob_scale, 1.0, power)
+	_bob_time = fmod(_bob_time + delta * bob_speed * bob_scale, TAU)
+	body.position.y = sin(_bob_time) * bob_amplitude * bob_scale
 	body.scale.x = facing
 	var tilt := clampf(speed_x * tilt_per_speed, -max_tilt_degrees, max_tilt_degrees)
+	tilt += offline_droop_degrees * facing * (1.0 - power) # nose-down when powered off
 	body.rotation = lerp_angle(body.rotation, deg_to_rad(tilt), 1.0 - exp(-tilt_smoothing * delta))
 
 
@@ -322,7 +344,8 @@ func _find_player() -> bool:
 
 func _target_position() -> Vector2:
 	facing = player.facing
-	return player.global_position + Vector2(follow_offset.x * facing, follow_offset.y)
+	var sink := offline_sink * (1.0 - power)
+	return player.global_position + Vector2(follow_offset.x * facing, follow_offset.y + sink)
 
 
 func _on_enabled_changed(enabled: bool) -> void:

@@ -7,11 +7,18 @@ extends Node2D
 @export var faces_texture: Texture2D = preload("res://assets/jarvis/faces.png")
 @export var frame_size: int = 32
 ## Face frame names in faces.png order (must match the generator's FACES order).
-@export var face_names: PackedStringArray = ["neutral", "blink", "happy", "annoyed", "furious"]
+@export var face_names: PackedStringArray = ["neutral", "blink", "happy", "annoyed", "off", "furious"]
+## body.png: spinning frames first, then one powered-down frame (rotor stopped, no flame).
+@export var off_frames: int = 1
 @export var rotor_fps: float = 14.0
 @export var blink_interval_min: float = 2.5
 @export var blink_interval_max: float = 5.0
 @export var blink_duration: float = 0.12
+## 0..1; below this power the rotor shows the stopped frame.
+@export var stopped_below_power: float = 0.15
+
+## 1 = running, 0 = powered down. The parent eases this when JARVIS goes offline/online.
+var power: float = 1.0
 
 var face: String = "neutral"
 
@@ -41,8 +48,12 @@ func set_face(face_name: String) -> void:
 
 
 func _process(delta: float) -> void:
-	_rotor_time += delta
-	_shell.frame = int(_rotor_time * rotor_fps) % _shell.hframes
+	var spinning := maxi(_shell.hframes - off_frames, 1)
+	if power < stopped_below_power:
+		_shell.frame = spinning # first off frame
+	else:
+		_rotor_time += delta * power # spins down with power
+		_shell.frame = int(_rotor_time * rotor_fps) % spinning
 	_tick_blink(delta)
 
 
