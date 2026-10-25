@@ -1,14 +1,17 @@
 extends Node
-# Headless check for JARVIS: spawn, follow, bob, trust tint and spray shooting.
+# Headless check for JARVIS: spawn, follow, bob, trust tint, spray shooting and paid abilities.
 # Run:  godot --headless --path . res://tests/jarvis/test_jarvis.tscn
 var _t := 0
 var _failed := false
 var _bob_min := INF
 var _bob_max := -INF
 var _home := Vector2.ZERO
+var _activated: Array[StringName] = []
+var _denied: Array[StringName] = []
 
 
 func _ready() -> void:
+	process_physics_priority = -10 # press inputs before JARVIS (priority -1) reads them
 	_begin.call_deferred()
 
 
@@ -26,6 +29,7 @@ func _physics_process(_delta: float) -> void:
 	var jarvis := get_tree().get_first_node_in_group("jarvis") as Node2D
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if _t == 2:
+		s.get_node("Entities").queue_free() # no pickups/enemies changing token counts
 		_check(jarvis != null, "JARVIS spawns in level 1")
 		if jarvis == null:
 			return _finish()
@@ -74,7 +78,96 @@ func _physics_process(_delta: float) -> void:
 		var bullets := get_tree().get_nodes_in_group("player_projectile")
 		_check(not bullets.is_empty(), "JARVIS keeps shooting with no enemies around")
 		_check(bullets.all(func(b: Node) -> bool: return b.source == jarvis), "JARVIS bullets credit JARVIS for kills")
-		_finish()
+		jarvis.ability_activated.connect(func(a: StringName) -> void: _activated.append(a))
+		jarvis.ability_denied.connect(func(a: StringName) -> void: _denied.append(a))
+	if _t >= 200:
+		_abilities(jarvis, player)
+
+
+## Dash, double jump and shield: paid with JARVIS's online % (trust), applied through the Player API.
+## Costs come from jarvis.trust_costs so retuning them doesn't break the test.
+## Input.action_press() during a physics frame reads as "just pressed" on the next one, so
+## each check runs two frames after its press.
+func _abilities(jarvis: Node2D, p: Player) -> void:
+	var dash: float = jarvis.trust_costs[&"dash"]
+	var boost: float = jarvis.trust_costs[&"boost_jump"]
+	var shield: float = jarvis.trust_costs[&"shield"]
+	match _t:
+		200:
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+			GameState.tokens = 0
+			GameState.trust = dash - 1.0 # online, but can't afford a dash
+		230: Input.action_press("dash")
+		232:
+			Input.action_release("dash")
+			_check(_denied.has(&"dash") and p._dash_time_left <= 0.0 and is_equal_approx(GameState.trust, dash - 1.0),
+				"dash without enough online % is denied and does nothing")
+			GameState.trust = 100.0
+		240: Input.action_press("dash")
+		242:
+			Input.action_release("dash")
+			_check(p._dash_time_left > 0.0 and is_equal_approx(GameState.trust, 100.0 - dash), "dash key costs online %")
+		270: Input.action_press("move_right")
+		272: Input.action_release("move_right")
+		276: Input.action_press("move_right")
+		278:
+			_check(p._dash_time_left > 0.0 and is_equal_approx(GameState.trust, 100.0 - 2.0 * dash), "double-tap right buys a dash")
+			_check(GameState.tokens == 0, "abilities never spend tokens")
+		280:
+			Input.action_release("move_right")
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+		310:
+			GameState.trust = 100.0
+			Input.action_press("jump")
+		312: Input.action_release("jump")
+		325: Input.action_press("jump")
+		327:
+			Input.action_release("jump")
+			_check(is_equal_approx(GameState.trust, 100.0 - boost) and p.velocity.y < 0.0 and _activated.has(&"boost_jump"),
+				"ground jump is free, double jump costs online %")
+		340: Input.action_press("jump")
+		342:
+			_check(is_equal_approx(GameState.trust, 100.0 - boost) and _activated.count(&"boost_jump") == 1, "only one double jump per airtime")
+			Input.action_release("jump")
+		380:
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+			GameState.trust = boost - 1.0
+		400: Input.action_press("jump")
+		402: Input.action_release("jump")
+		412: Input.action_press("jump")
+		414:
+			Input.action_release("jump")
+			_check(_denied.has(&"boost_jump") and p.velocity.y > -350.0, "double jump without enough online % is denied")
+		440:
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+			GameState.trust = 2.0 * shield + 1.0 # pays two seconds, then runs short while still online
+			Input.action_press("shield")
+		442:
+			_check(p.shielded and p._shield_bubble.visible and is_equal_approx(GameState.trust, shield + 1.0),
+				"holding shield pays the first second and shows the bubble")
+		506:
+			_check(p.shielded and is_equal_approx(GameState.trust, 1.0), "held shield is billed again each second")
+		565:
+			_check(not p.shielded and not p._shield_bubble.visible and GameState.jarvis_enabled,
+				"shield drops when the next second can't be paid")
+		566:
+			_check(is_equal_approx(GameState.trust, 1.0), "unpaid shield does not retry every frame")
+			Input.action_release("shield")
+		580:
+			GameState.trust = 100.0
+			Input.action_press("shield")
+		582:
+			_check(p.shielded, "shield comes back on a new press")
+			GameState.trust = 0.0
+		583:
+			_check(not p.shielded, "shield drops when JARVIS goes offline")
+			Input.action_release("shield")
+			GameState.trust = 100.0
+			_finish()
 
 
 func _clear_bullets() -> void:

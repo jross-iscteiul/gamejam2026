@@ -1,7 +1,9 @@
 class_name Player
 extends CharacterBody2D
-## Player controller: run, double jump, dash, mouse-aimed gun; keys 1-6 switch character.
+## Player controller: run, jump, mouse-aimed gun; keys 1-6 switch character.
 ## Implements the team Player API (README): dash(direction), set_shield(active), boost_jump().
+## Dash, the double jump (boost_jump) and shield are sold by JARVIS (Package 2): it reads that input,
+## pays tokens and calls the API.
 ## Pits call respawn(); checkpoints move respawn_point.
 
 signal skin_changed(skin: PlayerSkin)
@@ -15,7 +17,7 @@ const SKINS := [
 	preload("res://characters/player/gas_mask.tres"),
 ]
 const BULLET_SCENE: PackedScene = preload("res://characters/player/bullet.tscn")
-const DOUBLE_TAP_WINDOW_MSEC: int = 250
+const SHIELD_BUBBLE: GDScript = preload("res://characters/player/shield_bubble.gd")
 ## Feet sit this far below the origin (levels place the player at a tile centre). Matches Body's y in player.tscn.
 const FEET_Y: float = 16.0
 
@@ -47,7 +49,7 @@ static var selected_skin: int = -1
 @export_group("Jump")
 @export var jump_velocity: float = 480.0
 @export var double_jump_velocity: float = 400.0
-@export var air_jumps: int = 1
+@export var air_jumps: int = 0 # free air jumps; the double jump is bought from JARVIS
 ## Upward speed is multiplied by this when jump is released early (1 = fixed-height jumps).
 @export_range(0.0, 1.0) var jump_cut: float = 1.0
 
@@ -66,8 +68,6 @@ var _air_jumps_left: int = 0
 var _can_air_dash: bool = true
 var _aim_direction: Vector2 = Vector2.RIGHT
 var _fire_cooldown: float = 0.0
-var _last_tap_direction: int = 0
-var _last_tap_time_msec: int = 0
 var _dash_time_left: float = 0.0
 var _dash_cooldown_left: float = 0.0
 var _knockback_left: float = 0.0
@@ -89,6 +89,7 @@ var _touch_shooting: bool = false
 @onready var _health: Health = $Health
 @onready var _hurtbox: Hurtbox = $Hurtbox
 @onready var _camera: Camera2D = $Camera2D
+@onready var _shield_bubble: Node2D = SHIELD_BUBBLE.new()
 
 
 func _ready() -> void:
@@ -97,6 +98,8 @@ func _ready() -> void:
 	_hurtbox.health = _health
 	_health.died.connect(_on_died)
 	_health.damaged.connect(_on_damaged)
+	_shield_bubble.visible = shielded
+	add_child(_shield_bubble)
 	if selected_skin >= 0:
 		skin_index = selected_skin
 	_apply_skin()
@@ -115,7 +118,6 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 	_dash_cooldown_left = maxf(_dash_cooldown_left - delta, 0.0)
-	_handle_dash_input()
 	_move(delta)
 	_aim()
 	_shoot(delta)
@@ -165,27 +167,6 @@ func _move(delta: float) -> void:
 	move_and_slide()
 
 
-func _handle_dash_input() -> void:
-	if Input.is_action_just_pressed("dash"):
-		dash(Vector2(_move_direction, 0.0))
-		return
-	var direction := 0
-	if Input.is_action_just_pressed("move_left"):
-		direction = -1
-	elif Input.is_action_just_pressed("move_right"):
-		direction = 1
-	if direction == 0:
-		return
-
-	var now := Time.get_ticks_msec()
-	if direction == _last_tap_direction and now - _last_tap_time_msec <= DOUBLE_TAP_WINDOW_MSEC:
-		dash(Vector2(direction, 0.0))
-		_last_tap_direction = 0
-	else:
-		_last_tap_direction = direction
-		_last_tap_time_msec = now
-
-
 ## Player API: short horizontal burst, one per airtime. Only the x sign of direction is used.
 func dash(direction: Vector2) -> void:
 	if _is_dead or _dash_cooldown_left > 0.0 or not (is_on_floor() or _can_air_dash):
@@ -209,6 +190,21 @@ func apply_knockback(impulse: Vector2) -> void:
 	_knockback_left = 0.2
 
 
+## Player API: true when dash() would start a dash right now (JARVIS checks before charging).
+func can_dash() -> bool:
+	return not _is_dead and _dash_cooldown_left <= 0.0 and (is_on_floor() or _can_air_dash)
+
+
+## Player API: last horizontal direction the player moved in (-1 or 1); the dash key dashes this way.
+func move_direction() -> int:
+	return _move_direction
+
+
+## Player API: true when a jump press would jump right now without buying a boost_jump().
+func can_jump() -> bool:
+	return not _is_dead and (is_on_floor() or _air_jumps_left > 0)
+
+
 ## Player API: one extra air jump, kept until used.
 func boost_jump() -> void:
 	_air_jumps_left += 1
@@ -218,6 +214,7 @@ func boost_jump() -> void:
 func set_shield(active: bool) -> void:
 	shielded = active
 	_health.invulnerable = active
+	_shield_bubble.visible = active
 
 
 ## HUD adapter: avoid turning movement-pad touches into emulated mouse shots.
