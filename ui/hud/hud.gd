@@ -266,6 +266,9 @@ func _boss_defeated() -> void:
 
 
 func _say(text: String, _mood: String) -> void:
+	# JARVIS shows his own lines in a speech bubble; the HUD only covers scenes without him.
+	if get_tree().get_first_node_in_group("jarvis") != null:
+		return
 	_speech.text = "JARVIS: " + text
 	_speech_time = 4.0
 	_speech.show()

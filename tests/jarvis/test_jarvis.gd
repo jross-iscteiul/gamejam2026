@@ -80,8 +80,10 @@ func _physics_process(_delta: float) -> void:
 		_check(bullets.all(func(b: Node) -> bool: return b.source == jarvis), "JARVIS bullets credit JARVIS for kills")
 		jarvis.ability_activated.connect(func(a: StringName) -> void: _activated.append(a))
 		jarvis.ability_denied.connect(func(a: StringName) -> void: _denied.append(a))
-	if _t >= 200:
+	if _t >= 200 and _t < 600:
 		_abilities(jarvis, player)
+	if _t >= 600:
+		_talk(jarvis)
 
 
 ## Dash, double jump and shield: paid with JARVIS's online % (trust), applied through the Player API.
@@ -167,6 +169,55 @@ func _abilities(jarvis: Node2D, p: Player) -> void:
 			_check(not p.shielded, "shield drops when JARVIS goes offline")
 			Input.action_release("shield")
 			GameState.trust = 100.0
+
+
+## Speech bubble: shows GameState lines (HUD stays quiet), types out, wraps, hides,
+## and JARVIS's own triggers pick the right mood.
+func _talk(jarvis: Node2D) -> void:
+	var bubble: Node2D = jarvis.get_node("SpeechBubble")
+	var hud := get_tree().get_first_node_in_group("game_hud")
+	match _t:
+		600:
+			GameState.jarvis_say.emit("Test line.", "smug")
+		601:
+			_check(bubble.visible and bubble.text == "Test line." and bubble.mood == "smug", "jarvis_say shows in JARVIS's bubble with its mood")
+			_check(bubble.is_typing(), "bubble text types out")
+			_check(hud == null or not hud._speech.visible, "HUD leaves JARVIS lines to the bubble")
+		640:
+			_check(bubble.visible and not bubble.is_typing(), "bubble finishes typing and holds the line")
+		800:
+			_check(not bubble.visible, "bubble hides after its hold time")
+			bubble.say("This is a much longer line that has to wrap over several rows inside the bubble.")
+			var widest := 0.0
+			for line: String in bubble._lines:
+				widest = maxf(widest, bubble.font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, bubble.font_size).x)
+			_check(bubble._lines.size() > 1 and widest <= bubble.max_text_width, "long lines wrap inside max_text_width")
+			jarvis._denied_cooldown_left = 0.0
+			jarvis.ability_denied.emit(&"dash")
+		801:
+			_check(bubble.mood == "annoyed" and Dialogue._lines["ability_denied"].has(bubble.text), "denied ability gets an annoyed line")
+			jarvis.ability_denied.emit(&"dash")
+			bubble.say("marker")
+			jarvis.ability_denied.emit(&"dash")
+		802:
+			_check(bubble.text == "marker", "denied lines have a cooldown")
+			GameState.trust = jarvis.low_trust_threshold - 1.0
+		803:
+			_check(bubble.mood == "sad" and Dialogue._lines["low_trust"].has(bubble.text), "dropping below the low-trust threshold complains")
+			bubble.say("marker")
+			GameState.trust = jarvis.low_trust_threshold - 2.0
+		804:
+			_check(bubble.text == "marker", "low-trust complaint fires once per drop")
+			GameState.trust = 0.0
+		805:
+			_check(bubble.mood == "offline" and Dialogue._lines["offline"].has(bubble.text), "going offline says a last line")
+			GameState.trust = 50.0
+		806:
+			_check(bubble.mood == "happy" and Dialogue._lines["back_online"].has(bubble.text), "coming back online says so")
+			bubble.clear()
+			jarvis._idle_left = 0.0
+		808:
+			_check(bubble.visible and Dialogue._lines["idle"].has(bubble.text), "quiet JARVIS says an idle line")
 			_finish()
 
 

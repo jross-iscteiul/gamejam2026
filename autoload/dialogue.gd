@@ -8,6 +8,11 @@ var _lines := {
 	"death": ["Gravity: 1, You: 0."],
 	"gambling": ["The house always wins. I am the house."],
 	"low_trust": ["Feed me tokens and maybe I'll care."],
+	# Package 2 (JARVIS speech bubble) categories; placeholder lines.
+	"idle": ["Still here. Still judging.", "I could do this faster.", "Nice weather for a jump."],
+	"ability_denied": ["Not on my budget.", "Trust first, tricks later.", "That costs more than you've got."],
+	"offline": ["Battery... of trust... empty..."],
+	"back_online": ["Back online. Don't make it weird."],
 }
 
 
