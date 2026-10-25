@@ -17,5 +17,5 @@ script = ExtResource("3_spray")
 
 [node name="SpeechBubble" type="Node2D" parent="." unique_id=1609640970]
 z_index = 10
-position = Vector2(0, -10)
+position = Vector2(0, -14)
 script = ExtResource("4_bubble")
