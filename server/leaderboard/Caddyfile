@@ -1,0 +1,4 @@
+leaderboard-gamejam2026.suricata-lab.com {
+	encode zstd gzip
+	reverse_proxy leaderboard:8080
+}
