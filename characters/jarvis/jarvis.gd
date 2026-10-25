@@ -30,7 +30,7 @@ extends Node2D
 	Vector4(20.0, 70.0, 10.0, 25.0), # a bit down, densest near the front
 ]
 @export var min_fire_rate: float = 0.5 # shots per second when trust is almost empty
-@export var max_fire_rate: float = 3.0 # shots per second at full trust
+@export var max_fire_rate: float = 2.5 # shots per second at full trust
 
 @export_group("Abilities")
 @export var double_tap_window_msec: int = 250 # double-tap move_left/right to dash
@@ -38,8 +38,16 @@ extends Node2D
 ## Online % (trust) each ability costs; shield cost is per shield_bill_interval.
 @export var trust_costs: Dictionary[StringName, float] = {&"dash": 5.0, &"boost_jump": 8.0, &"shield": 4.0}
 
+@export_group("Talk")
+@export var low_trust_threshold: float = 25.0 # complains once when the online bar drops below this
+@export var idle_line_min_seconds: float = 20.0
+@export var idle_line_max_seconds: float = 40.0
+@export var denied_line_cooldown: float = 4.0 # don't nag on every refused press
+
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
+
+const SpeechBubble := preload("res://characters/jarvis/speech_bubble.gd")
 
 signal ability_activated(ability: StringName)
 signal ability_denied(ability: StringName) # not enough online % or JARVIS offline
@@ -53,8 +61,12 @@ var _last_tap_direction: int = 0
 var _last_tap_time_msec: int = 0
 var _shield_paid_left: float = 0.0
 var _boosted_this_air: bool = false
+var _low_trust_warned: bool = false
+var _idle_left: float = 0.0
+var _denied_cooldown_left: float = 0.0
 
 @onready var body: Node2D = $Body
+@onready var bubble: SpeechBubble = $SpeechBubble
 
 
 func _ready() -> void:
@@ -63,6 +75,11 @@ func _ready() -> void:
 	process_physics_priority = -1
 	_rng.randomize()
 	GameState.jarvis_enabled_changed.connect(_on_enabled_changed)
+	GameState.jarvis_say.connect(_on_jarvis_say)
+	GameState.trust_changed.connect(_on_trust_changed)
+	ability_denied.connect(_on_ability_denied)
+	_low_trust_warned = GameState.trust < low_trust_threshold
+	_reset_idle()
 	_find_player()
 	if player:
 		global_position = _target_position()
@@ -81,6 +98,47 @@ func _process(delta: float) -> void:
 	var speed_x := (global_position.x - previous.x) / delta if delta > 0.0 else 0.0
 	_animate_body(delta, speed_x)
 	_shoot(delta)
+	_tick_talk(delta)
+
+
+## Says a random Dialogue line from `category` for the current level.
+func say_line(category: String, mood: String = "neutral") -> void:
+	bubble.say(Dialogue.get_line(category, GameState.current_level), mood)
+	_reset_idle()
+
+
+func _tick_talk(delta: float) -> void:
+	_denied_cooldown_left = maxf(_denied_cooldown_left - delta, 0.0)
+	if not GameState.jarvis_enabled or bubble.is_talking():
+		return
+	_idle_left -= delta
+	if _idle_left <= 0.0:
+		say_line("idle")
+
+
+func _reset_idle() -> void:
+	_idle_left = _rng.randf_range(idle_line_min_seconds, idle_line_max_seconds)
+
+
+## GameState already picked the line (kills, deaths); just show it.
+func _on_jarvis_say(text: String, mood: String) -> void:
+	bubble.say(text, mood)
+	_reset_idle()
+
+
+func _on_ability_denied(_ability: StringName) -> void:
+	if _denied_cooldown_left > 0.0 or not GameState.jarvis_enabled:
+		return
+	_denied_cooldown_left = denied_line_cooldown
+	say_line("ability_denied", "annoyed")
+
+
+func _on_trust_changed(trust: float) -> void:
+	if trust >= low_trust_threshold:
+		_low_trust_warned = false
+	elif not _low_trust_warned and GameState.jarvis_enabled:
+		_low_trust_warned = true
+		say_line("low_trust", "sad")
 
 
 func _physics_process(delta: float) -> void:
@@ -225,3 +283,9 @@ func _target_position() -> Vector2:
 func _on_enabled_changed(enabled: bool) -> void:
 	body.modulate = Color.WHITE if enabled else disabled_color
 	body.queue_redraw()
+	if not is_node_ready():
+		return
+	if enabled:
+		say_line("back_online", "happy")
+	elif not GameState.jarvis_hostile:
+		say_line("offline", "offline")
