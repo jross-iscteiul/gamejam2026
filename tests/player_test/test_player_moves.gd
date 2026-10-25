@@ -31,6 +31,9 @@ func _step(_d: float) -> bool:
 		start = p.global_position
 	t += 1
 	if t == 1: # reset onto the floor, facing right
+		# Dash is bought from JARVIS: pay for the dash steps, keep 0 tokens elsewhere so a
+		# third jump press can't buy a boost jump.
+		GameState.tokens = 10 if "dash" in STEPS[step][0] else 0
 		p.global_position = start
 		p.velocity = Vector2.ZERO
 		p.facing = 1
@@ -73,6 +76,7 @@ var _running := false
 
 
 func _ready() -> void:
+	process_physics_priority = -10 # press inputs before JARVIS (priority -1) reads them
 	_begin.call_deferred()
 
 

@@ -1,14 +1,17 @@
 extends Node
-# Headless check for JARVIS: spawn, follow, bob, trust tint and spray shooting.
+# Headless check for JARVIS: spawn, follow, bob, trust tint, spray shooting and paid abilities.
 # Run:  godot --headless --path . res://tests/jarvis/test_jarvis.tscn
 var _t := 0
 var _failed := false
 var _bob_min := INF
 var _bob_max := -INF
 var _home := Vector2.ZERO
+var _activated: Array[StringName] = []
+var _denied: Array[StringName] = []
 
 
 func _ready() -> void:
+	process_physics_priority = -10 # press inputs before JARVIS (priority -1) reads them
 	_begin.call_deferred()
 
 
@@ -74,7 +77,80 @@ func _physics_process(_delta: float) -> void:
 		var bullets := get_tree().get_nodes_in_group("player_projectile")
 		_check(not bullets.is_empty(), "JARVIS keeps shooting with no enemies around")
 		_check(bullets.all(func(b: Node) -> bool: return b.source == jarvis), "JARVIS bullets credit JARVIS for kills")
-		_finish()
+		jarvis.ability_activated.connect(func(a: StringName) -> void: _activated.append(a))
+		jarvis.ability_denied.connect(func(a: StringName) -> void: _denied.append(a))
+	if _t >= 200:
+		_abilities(jarvis, player)
+
+
+## Dash, boost jump and shield: bought through GameState, applied through the Player API.
+func _abilities(jarvis: Node2D, p: Player) -> void:
+	match _t:
+		200:
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+			GameState.tokens = 0
+		230: Input.action_press("dash")
+		231:
+			Input.action_release("dash")
+			_check(_denied.has(&"dash") and p._dash_time_left <= 0.0, "dash without tokens is denied and does nothing")
+			GameState.tokens = 10
+		240: Input.action_press("dash")
+		241:
+			Input.action_release("dash")
+			_check(p._dash_time_left > 0.0 and GameState.tokens == 9, "dash key buys a dash for 1 token")
+		270: Input.action_press("move_right")
+		272: Input.action_release("move_right")
+		276: Input.action_press("move_right")
+		277:
+			_check(p._dash_time_left > 0.0 and GameState.tokens == 8, "double-tap right buys a dash")
+		280:
+			Input.action_release("move_right")
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+		310:
+			GameState.tokens = 10
+			Input.action_press("jump")
+		312: Input.action_release("jump")
+		325: Input.action_press("jump")
+		327: Input.action_release("jump")
+		340:
+			_check(GameState.tokens == 10, "normal and double jump stay free")
+			Input.action_press("jump")
+		341:
+			_check(GameState.tokens == 7 and p.velocity.y < 0.0 and _activated.has(&"boost_jump"), "third jump press buys a boost jump for 3 tokens")
+		342:
+			Input.action_release("jump")
+			GameState.tokens = 0
+		350: Input.action_press("jump")
+		351:
+			Input.action_release("jump")
+			_check(_denied.has(&"boost_jump"), "boost jump without tokens is denied")
+		420:
+			p.global_position = _home
+			p.velocity = Vector2.ZERO
+			GameState.tokens = 5
+			Input.action_press("shield")
+		421:
+			_check(p.shielded and p._shield_bubble.visible and GameState.tokens == 3, "holding shield buys the first second for 2 tokens and shows the bubble")
+		486:
+			_check(p.shielded and GameState.tokens == 1, "held shield is billed again each second")
+		545:
+			_check(not p.shielded and not p._shield_bubble.visible, "shield drops when the next second can't be paid")
+		546:
+			_check(GameState.tokens == 1, "unpaid shield does not retry every frame")
+			Input.action_release("shield")
+		560:
+			GameState.tokens = 10
+			Input.action_press("shield")
+		562:
+			_check(p.shielded, "shield comes back on a new press")
+			GameState.trust = 0.0
+		563:
+			_check(not p.shielded, "shield drops when JARVIS goes offline")
+			Input.action_release("shield")
+			GameState.trust = 100.0
+			_finish()
 
 
 func _clear_bullets() -> void:
