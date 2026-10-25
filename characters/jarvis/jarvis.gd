@@ -1,7 +1,7 @@
 class_name Jarvis
 extends Node2D
 ## Package 2 sidekick. Follows the player, sprays shots ahead and sells abilities: it reads the
-## dash / boost jump / shield input, pays tokens through GameState and calls the Player API. Later steps add
+## dash / double jump / shield input, pays with its online % (GameState.trust) and calls the Player API. Later steps add
 ## speech bubble, moods and sounds. Visual is a code-drawn placeholder (see Body).
 
 @export_group("Follow")
@@ -35,12 +35,14 @@ extends Node2D
 @export_group("Abilities")
 @export var double_tap_window_msec: int = 250 # double-tap move_left/right to dash
 @export var shield_bill_interval: float = 1.0 # seconds paid by each shield charge
+## Online % (trust) each ability costs; shield cost is per shield_bill_interval.
+@export var trust_costs: Dictionary[StringName, float] = {&"dash": 5.0, &"boost_jump": 8.0, &"shield": 4.0}
 
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
 
 signal ability_activated(ability: StringName)
-signal ability_denied(ability: StringName) # not enough tokens or JARVIS offline
+signal ability_denied(ability: StringName) # not enough online % or JARVIS offline
 
 var player: Player
 var facing: int = 1
@@ -50,6 +52,7 @@ var _rng := RandomNumberGenerator.new()
 var _last_tap_direction: int = 0
 var _last_tap_time_msec: int = 0
 var _shield_paid_left: float = 0.0
+var _boosted_this_air: bool = false
 
 @onready var body: Node2D = $Body
 
@@ -110,9 +113,15 @@ func _handle_dash_input() -> void:
 		player.dash(Vector2(direction, 0.0))
 
 
-## A jump press with no jumps left buys one; the player's own jump code then uses it this frame.
+## The double jump: a jump press in the air with no jumps left buys one (once per airtime);
+## the player's own jump code then uses it this frame.
 func _handle_boost_jump_input() -> void:
-	if Input.is_action_just_pressed("jump") and not player.can_jump() and _buy(&"boost_jump"):
+	if player.is_on_floor():
+		_boosted_this_air = false
+	if not Input.is_action_just_pressed("jump") or player.can_jump() or _boosted_this_air:
+		return
+	if _buy(&"boost_jump"):
+		_boosted_this_air = true
 		player.boost_jump()
 
 
@@ -131,12 +140,17 @@ func _handle_shield_input(delta: float) -> void:
 		player.set_shield(active)
 
 
+## Pays the ability's trust cost. Allowed while online with at least that much trust, so the
+## last purchase can take JARVIS to exactly 0 (offline).
 func _buy(ability: StringName) -> bool:
-	if GameState.use_ability(ability):
-		ability_activated.emit(ability)
-		return true
-	ability_denied.emit(ability)
-	return false
+	var cost: float = trust_costs.get(ability, 0.0)
+	if not GameState.jarvis_enabled or GameState.trust < cost:
+		ability_denied.emit(ability)
+		return false
+	GameState.add_trust(-cost)
+	GameState.ability_used.emit(ability, ceili(cost))
+	ability_activated.emit(ability)
+	return true
 
 
 ## Shots per second; follows the trust ("online") bar from min_fire_rate to max_fire_rate.

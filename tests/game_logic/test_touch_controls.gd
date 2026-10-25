@@ -82,7 +82,7 @@ func _run() -> void:
 	_finger(0, Vector2.ZERO, false)
 	await _frames(1)
 	_check(not Input.is_action_pressed("move_right"), "releasing movement outside its button stops movement")
-	GameState.tokens = 10 # dash is bought from JARVIS
+	GameState.trust = GameState.MAX_TRUST # dash is paid with JARVIS's online %
 	_finger(3, _touch.button_center(&"dash"), true)
 	await _frames(2)
 	_check(_player._dash_time_left > 0, "touch dash reaches the existing player dash")

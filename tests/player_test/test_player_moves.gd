@@ -31,9 +31,8 @@ func _step(_d: float) -> bool:
 		start = p.global_position
 	t += 1
 	if t == 1: # reset onto the floor, facing right
-		# Dash is bought from JARVIS: pay for the dash steps, keep 0 tokens elsewhere so a
-		# third jump press can't buy a boost jump.
-		GameState.tokens = 10 if "dash" in STEPS[step][0] else 0
+		# Double jump and dash are paid with JARVIS's online %; keep it full for every step.
+		GameState.trust = GameState.MAX_TRUST
 		p.global_position = start
 		p.velocity = Vector2.ZERO
 		p.facing = 1
@@ -60,7 +59,7 @@ func _report() -> void:
 	var single: float = results["single jump"].rise
 	var double: float = results["double jump"].rise
 	_check(double > single * 1.5, "double jump goes higher than single")
-	_check(absf(results["triple press"].rise - double) < 2.0, "third jump press ignored (only one air jump)")
+	_check(absf(results["triple press"].rise - double) < 2.0, "third jump press ignored (only one bought air jump)")
 	_check(results["ground dash"].dx > 50.0, "ground dash moves ~2 tiles")
 	var one_air_dash: float = 420.0 * 0.15
 	_check(results["two air dashes"].dx < one_air_dash * 1.5, "only one dash per airtime")

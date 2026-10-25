@@ -1,8 +1,9 @@
 class_name Player
 extends CharacterBody2D
-## Player controller: run, double jump, mouse-aimed gun; keys 1-6 switch character.
+## Player controller: run, jump, mouse-aimed gun; keys 1-6 switch character.
 ## Implements the team Player API (README): dash(direction), set_shield(active), boost_jump().
-## Dash, boost jump and shield input is read by JARVIS (Package 2), which pays tokens and calls the API.
+## Dash, the double jump (boost_jump) and shield are sold by JARVIS (Package 2): it reads that input,
+## pays tokens and calls the API.
 ## Pits call respawn(); checkpoints move respawn_point.
 
 signal skin_changed(skin: PlayerSkin)
@@ -16,6 +17,7 @@ const SKINS := [
 	preload("res://characters/player/gas_mask.tres"),
 ]
 const BULLET_SCENE: PackedScene = preload("res://characters/player/bullet.tscn")
+const SHIELD_BUBBLE: GDScript = preload("res://characters/player/shield_bubble.gd")
 ## Feet sit this far below the origin (levels place the player at a tile centre). Matches Body's y in player.tscn.
 const FEET_Y: float = 16.0
 
@@ -47,7 +49,7 @@ static var selected_skin: int = -1
 @export_group("Jump")
 @export var jump_velocity: float = 480.0
 @export var double_jump_velocity: float = 400.0
-@export var air_jumps: int = 1
+@export var air_jumps: int = 0 # free air jumps; the double jump is bought from JARVIS
 ## Upward speed is multiplied by this when jump is released early (1 = fixed-height jumps).
 @export_range(0.0, 1.0) var jump_cut: float = 1.0
 
@@ -87,7 +89,7 @@ var _touch_shooting: bool = false
 @onready var _health: Health = $Health
 @onready var _hurtbox: Hurtbox = $Hurtbox
 @onready var _camera: Camera2D = $Camera2D
-@onready var _shield_bubble: Node2D = ShieldBubble.new()
+@onready var _shield_bubble: Node2D = SHIELD_BUBBLE.new()
 
 
 func _ready() -> void:
@@ -198,7 +200,7 @@ func move_direction() -> int:
 	return _move_direction
 
 
-## Player API: true when a jump press would jump right now without a boost.
+## Player API: true when a jump press would jump right now without buying a boost_jump().
 func can_jump() -> bool:
 	return not _is_dead and (is_on_floor() or _air_jumps_left > 0)
 
