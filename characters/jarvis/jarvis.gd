@@ -2,7 +2,8 @@ class_name Jarvis
 extends Node2D
 ## Package 2 sidekick. Follows the player, sprays shots ahead and sells abilities: it reads the
 ## dash / double jump / shield input, pays with its online % (GameState.trust) and calls the Player API. Later steps add
-## speech bubble, moods and sounds. Visual is a code-drawn placeholder (see Body).
+## speech bubble and sounds. Moods (normal/happy/annoyed/furious) show as the eye colour on the
+## drone's screen (see Body) and the bubble border.
 
 @export_group("Follow")
 @export var follow_offset: Vector2 = Vector2(-20.0, -28.0) # x is mirrored by player facing
@@ -44,15 +45,30 @@ extends Node2D
 @export var idle_line_max_seconds: float = 40.0
 @export var denied_line_cooldown: float = 4.0 # don't nag on every refused press
 
+@export_group("Mood")
+## Resting mood follows the online bar: happy above happy_trust, furious below furious_trust,
+## annoyed below annoyed_trust, normal in between. While talking, the line's mood wins.
+@export var happy_trust: float = 75.0
+@export var annoyed_trust: float = 40.0
+@export var furious_trust: float = 15.0
+## Other mood names (from GameState / Dialogue callers) mapped onto JARVIS's moods.
+@export var mood_aliases: Dictionary[String, String] = {
+	"normal": "neutral", "smug": "happy", "sad": "annoyed", "angry": "furious"}
+
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
 
 const SpeechBubble := preload("res://characters/jarvis/speech_bubble.gd")
 
+## JARVIS's moods; "neutral" is the normal mood. "offline" is used while disabled.
+const MOODS: PackedStringArray = ["neutral", "happy", "annoyed", "furious"]
+
+signal mood_changed(mood: String)
 signal ability_activated(ability: StringName)
 signal ability_denied(ability: StringName) # not enough online % or JARVIS offline
 
 var player: Player
+var mood: String = "neutral"
 var facing: int = 1
 var _bob_time: float = 0.0
 var _fire_cooldown: float = 0.0
@@ -99,11 +115,40 @@ func _process(delta: float) -> void:
 	_animate_body(delta, speed_x)
 	_shoot(delta)
 	_tick_talk(delta)
+	_update_mood()
+
+
+## Resting mood from the online bar (or "offline" while disabled).
+func base_mood() -> String:
+	if not GameState.jarvis_enabled:
+		return "offline"
+	if GameState.trust < furious_trust:
+		return "furious"
+	if GameState.trust < annoyed_trust:
+		return "annoyed"
+	if GameState.trust >= happy_trust:
+		return "happy"
+	return "neutral"
+
+
+## Maps any mood name onto one of MOODS (or "offline").
+func normalize_mood(mood_name: String) -> String:
+	var mapped: String = mood_aliases.get(mood_name, mood_name)
+	return mapped if mapped == "offline" or MOODS.has(mapped) else "neutral"
+
+
+func _update_mood() -> void:
+	var current := bubble.mood if bubble.is_talking() else base_mood()
+	if current == mood:
+		return
+	mood = current
+	body.set_face(mood if MOODS.has(mood) else "neutral")
+	mood_changed.emit(mood)
 
 
 ## Says a random Dialogue line from `category` for the current level.
-func say_line(category: String, mood: String = "neutral") -> void:
-	bubble.say(Dialogue.get_line(category, GameState.current_level), mood)
+func say_line(category: String, line_mood: String = "neutral") -> void:
+	bubble.say(Dialogue.get_line(category, GameState.current_level), normalize_mood(line_mood))
 	_reset_idle()
 
 
@@ -121,8 +166,8 @@ func _reset_idle() -> void:
 
 
 ## GameState already picked the line (kills, deaths); just show it.
-func _on_jarvis_say(text: String, mood: String) -> void:
-	bubble.say(text, mood)
+func _on_jarvis_say(text: String, line_mood: String) -> void:
+	bubble.say(text, normalize_mood(line_mood))
 	_reset_idle()
 
 
@@ -130,7 +175,7 @@ func _on_ability_denied(_ability: StringName) -> void:
 	if _denied_cooldown_left > 0.0 or not GameState.jarvis_enabled:
 		return
 	_denied_cooldown_left = denied_line_cooldown
-	say_line("ability_denied", "annoyed")
+	say_line("ability_denied", "furious" if GameState.trust < annoyed_trust else "annoyed")
 
 
 func _on_trust_changed(trust: float) -> void:
@@ -138,7 +183,7 @@ func _on_trust_changed(trust: float) -> void:
 		_low_trust_warned = false
 	elif not _low_trust_warned and GameState.jarvis_enabled:
 		_low_trust_warned = true
-		say_line("low_trust", "sad")
+		say_line("low_trust", "annoyed")
 
 
 func _physics_process(delta: float) -> void:

@@ -35,6 +35,13 @@ func _physics_process(_delta: float) -> void:
 			return _finish()
 		_check(jarvis.global_position.distance_to(player.global_position) < 60.0, "JARVIS starts next to the player")
 		_home = player.global_position
+		var look: Node2D = jarvis.get_node("Body")
+		var sprites := look.get_children().filter(func(n: Node) -> bool: return n is Sprite2D)
+		_check(sprites.size() == 2 and sprites.all(func(n: Sprite2D) -> bool: return n.texture != null), "JARVIS uses the drone shell and face sprites")
+		look.set_face("blink")
+		var blink_frame: int = sprites[1].frame
+		look.set_face("neutral")
+		_check(blink_frame != sprites[1].frame and look.face == "neutral", "set_face switches the face frame")
 		jarvis.global_position += Vector2(150, 0)
 	if _t == 30:
 		_bob_min = INF
@@ -180,7 +187,7 @@ func _talk(jarvis: Node2D) -> void:
 		600:
 			GameState.jarvis_say.emit("Test line.", "smug")
 		601:
-			_check(bubble.visible and bubble.text == "Test line." and bubble.mood == "smug", "jarvis_say shows in JARVIS's bubble with its mood")
+			_check(bubble.visible and bubble.text == "Test line." and bubble.mood == "happy", "jarvis_say shows in JARVIS's bubble, smug maps to happy")
 			_check(bubble.is_typing(), "bubble text types out")
 			_check(hud == null or not hud._speech.visible, "HUD leaves JARVIS lines to the bubble")
 		640:
@@ -203,7 +210,7 @@ func _talk(jarvis: Node2D) -> void:
 			_check(bubble.text == "marker", "denied lines have a cooldown")
 			GameState.trust = jarvis.low_trust_threshold - 1.0
 		803:
-			_check(bubble.mood == "sad" and Dialogue._lines["low_trust"].has(bubble.text), "dropping below the low-trust threshold complains")
+			_check(bubble.mood == "annoyed" and Dialogue._lines["low_trust"].has(bubble.text), "dropping below the low-trust threshold complains")
 			bubble.say("marker")
 			GameState.trust = jarvis.low_trust_threshold - 2.0
 		804:
@@ -218,7 +225,47 @@ func _talk(jarvis: Node2D) -> void:
 			jarvis._idle_left = 0.0
 		808:
 			_check(bubble.visible and Dialogue._lines["idle"].has(bubble.text), "quiet JARVIS says an idle line")
+			_check(jarvis.mood == "neutral" and _eye(jarvis) == "neutral", "idle line keeps a normal eye")
+		810:
+			_set_trust_quietly(jarvis, 90.0)
+		811:
+			_check(jarvis.mood == "happy" and _eye(jarvis) == "happy", "high online % makes JARVIS happy (green eye)")
+			_set_trust_quietly(jarvis, 50.0)
+		812:
+			_check(jarvis.mood == "neutral" and _eye(jarvis) == "neutral", "mid online % is normal (cyan eye)")
+			_set_trust_quietly(jarvis, 30.0)
+		813:
+			_check(jarvis.mood == "annoyed" and _eye(jarvis) == "annoyed", "low online % annoys JARVIS (orange eye)")
+			_set_trust_quietly(jarvis, 10.0)
+		814:
+			_check(jarvis.mood == "furious" and _eye(jarvis) == "furious", "very low online % makes JARVIS furious (red eye)")
+			jarvis._denied_cooldown_left = 0.0
+			jarvis.ability_denied.emit(&"dash")
+		815:
+			_check(bubble.mood == "furious" and bubble.get("mood_colors")["furious"] == Color("ff2a2a"), "refusals while low are furious, bubble border matches the eye")
+			GameState.jarvis_say.emit("Got one.", "smug")
+		816:
+			_check(jarvis.mood == "happy" and _eye(jarvis) == "happy", "a happy line overrides the resting mood while talking")
+			bubble.clear()
+		817:
+			_check(jarvis.mood == "furious", "after talking JARVIS returns to his resting mood")
+			_check(jarvis.normalize_mood("sad") == "annoyed" and jarvis.normalize_mood("weird") == "neutral", "unknown and legacy mood names are mapped")
+			GameState.trust = 100.0
 			_finish()
+
+
+## Changes trust and silences any line it triggers, so only the resting mood is tested.
+func _set_trust_quietly(jarvis: Node2D, value: float) -> void:
+	GameState.trust = value
+	jarvis.get_node("SpeechBubble").clear()
+	jarvis._idle_left = 999.0
+
+
+## Name of the face currently shown on JARVIS's screen.
+func _eye(jarvis: Node2D) -> String:
+	var look: Node2D = jarvis.get_node("Body")
+	var face_sprite: Sprite2D = look.get_children().filter(func(n: Node) -> bool: return n is Sprite2D)[1]
+	return look.face_names[face_sprite.frame]
 
 
 func _clear_bullets() -> void:

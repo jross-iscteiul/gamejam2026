@@ -15,12 +15,12 @@ signal finished # the line was fully shown and the bubble hid
 @export var hold_per_char: float = 0.01 # longer lines stay a bit longer
 @export var background: Color = Color("131c2e")
 @export var text_color: Color = Color("edf5ed")
+## Border colour per mood; matches JARVIS's eye colours.
 @export var mood_colors: Dictionary[String, Color] = {
-	"neutral": Color("69e1d1"),
-	"happy": Color("8ee07a"),
-	"smug": Color("ffd268"),
-	"annoyed": Color("ff9f5a"),
-	"sad": Color("a2b7c8"),
+	"neutral": Color("0cffeb"),
+	"happy": Color("5dff6b"),
+	"annoyed": Color("ffa31a"),
+	"furious": Color("ff2a2a"),
 	"offline": Color("6b7280"),
 }
 
