@@ -250,6 +250,22 @@ func _talk(jarvis: Node2D) -> void:
 		817:
 			_check(jarvis.mood == "furious", "after talking JARVIS returns to his resting mood")
 			_check(jarvis.normalize_mood("sad") == "annoyed" and jarvis.normalize_mood("weird") == "neutral", "unknown and legacy mood names are mapped")
+			_set_trust_quietly(jarvis, 0.0)
+		830:
+			_check(jarvis.power > 0.0 and jarvis.power < 1.0, "powering down is gradual")
+		910:
+			_check(jarvis.power == 0.0 and _eye(jarvis) == "off", "offline JARVIS powers down with a dark screen")
+			var shell: Sprite2D = _sprites(jarvis)[0]
+			_check(shell.frame == shell.hframes - 1, "offline rotor stops and the thruster goes out")
+			var p := get_tree().get_first_node_in_group("player") as Node2D
+			var normal_y: float = p.global_position.y + jarvis.follow_offset.y
+			_check(jarvis.global_position.y > normal_y + jarvis.offline_sink * 0.8, "offline JARVIS sinks toward the player")
+			var droop: float = jarvis.body.rotation * jarvis.facing
+			_check(droop > deg_to_rad(jarvis.offline_droop_degrees * 0.6), "offline JARVIS droops nose-down")
+			_set_trust_quietly(jarvis, 50.0)
+		960:
+			var shell: Sprite2D = _sprites(jarvis)[0]
+			_check(jarvis.power == 1.0 and _eye(jarvis) != "off" and shell.frame < shell.hframes - 1, "feeding powers JARVIS back up")
 			GameState.trust = 100.0
 			_finish()
 
@@ -264,8 +280,13 @@ func _set_trust_quietly(jarvis: Node2D, value: float) -> void:
 ## Name of the face currently shown on JARVIS's screen.
 func _eye(jarvis: Node2D) -> String:
 	var look: Node2D = jarvis.get_node("Body")
-	var face_sprite: Sprite2D = look.get_children().filter(func(n: Node) -> bool: return n is Sprite2D)[1]
+	var face_sprite: Sprite2D = _sprites(jarvis)[1]
 	return look.face_names[face_sprite.frame]
+
+
+## [shell, face] sprites under JARVIS's Body.
+func _sprites(jarvis: Node2D) -> Array:
+	return jarvis.get_node("Body").get_children().filter(func(n: Node) -> bool: return n is Sprite2D)
 
 
 func _clear_bullets() -> void:

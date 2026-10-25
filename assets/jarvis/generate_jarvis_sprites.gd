@@ -2,7 +2,8 @@ extends SceneTree
 ## Generates JARVIS's original pixel-art drone sprites from the ASCII maps below.
 ## Palette matches the industrial robot enemy so JARVIS fits the same world.
 ## Run:  godot --headless --path . -s res://assets/jarvis/generate_jarvis_sprites.gd
-## Writes body.png (rotor + thruster animation frames) and faces.png (one face per frame,
+## Writes body.png (rotor + thruster animation frames, then one powered-down frame with the
+## rotor stopped and no flame) and faces.png (one face per frame,
 ## drawn on the body's screen). Edit the maps, re-run, commit the PNGs.
 
 const OUT_DIR := "res://assets/jarvis/"
@@ -102,6 +103,13 @@ const FACES := {
 		"......waa",
 		".........",
 	],
+	"off": [ # powered down: a dim flat line
+		".........",
+		".........",
+		".....mmm.",
+		".........",
+		".........",
+	],
 	"furious": [ # red, bigger eye under a brow slanting down toward the front
 		"....f....",
 		".....ff..",
@@ -114,18 +122,21 @@ const FACE_ORIGIN := Vector2i(13, 14)
 
 
 func _init() -> void:
-	var body := Image.create(FRAME * ROTOR_HALF.size(), FRAME, false, Image.FORMAT_RGBA8)
+	var body := Image.create(FRAME * (ROTOR_HALF.size() + 1), FRAME, false, Image.FORMAT_RGBA8)
 	for f in ROTOR_HALF.size():
 		_paint(body, BODY, Vector2i(f * FRAME, 0))
 		_rotor(body, f * FRAME, ROTOR_HALF[f])
 		_paint(body, FLAME[f], Vector2i(f * FRAME, 26))
+	var off := ROTOR_HALF.size() * FRAME # last frame: powered down
+	_paint(body, BODY, Vector2i(off, 0))
+	_rotor(body, off, ROTOR_HALF[1])
 	body.save_png(OUT_DIR + "body.png")
 	var names := FACES.keys()
 	var faces := Image.create(FRAME * names.size(), FRAME, false, Image.FORMAT_RGBA8)
 	for i in names.size():
 		_paint(faces, FACES[names[i]], Vector2i(i * FRAME, 0) + FACE_ORIGIN)
 	faces.save_png(OUT_DIR + "faces.png")
-	print("JARVIS sprites written: body frames %d, faces %s" % [ROTOR_HALF.size(), names])
+	print("JARVIS sprites written: body frames %d + off, faces %s" % [ROTOR_HALF.size(), names])
 	quit()
 
 
