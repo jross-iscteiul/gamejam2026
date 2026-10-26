@@ -98,8 +98,10 @@ func _build_hud() -> void:
 	_tokens.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_tokens.custom_minimum_size.x = 264
 	row.add_child(_tokens)
-	_feed = GameUI.button("FEED / 3", _feed_jarvis)
-	_feed.tooltip_text = "Spend 3 tokens to compact JARVIS's context: +25% energy. JARVIS shuts down at zero energy."
+	_feed = GameUI.button("FEED [F] / 3", _feed_jarvis)
+	_feed.tooltip_text = "F: spend 3 tokens to compact JARVIS's context: +25% energy. JARVIS shuts down at zero energy."
+	# Never keep keyboard focus: a focused button is activated by Space, which also jumps.
+	_feed.focus_mode = Control.FOCUS_NONE
 	row.add_child(_feed)
 	var pause := GameUI.button("II", func() -> void: set_paused(true))
 	pause.tooltip_text = "Pause (Esc / P)"
@@ -211,6 +213,8 @@ func _process(delta: float) -> void:
 	_sector.text = ("SECTOR %02d / 04" if GameState.run_clock.eligible else "PRACTICE / %02d") % GameState.current_level
 	if get_tree().paused:
 		return
+	if Input.is_action_just_pressed("feed"): # F key or the mobile FEED pad
+		_feed_jarvis()
 	_speech_time -= delta
 	_notice_time -= delta
 	_speech.visible = _speech_time > 0.0

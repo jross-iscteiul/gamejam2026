@@ -223,6 +223,24 @@ func _test_live_gameplay() -> void:
 	GameState.energy = 0
 	hud._feed_jarvis()
 	_check(GameState.jarvis_enabled and GameState.energy > 24, "HUD feed button revives JARVIS")
+	# F key feeds (once per press), and Space can never activate the FEED button.
+	GameState.tokens = 6
+	GameState.energy = 0
+	Input.action_press("feed")
+	await _frames(5)
+	Input.action_release("feed")
+	_check(GameState.energy > 24 and GameState.tokens == 3, "F feeds JARVIS once per press")
+	_check(hud._feed.focus_mode == Control.FOCUS_NONE, "FEED button never takes keyboard focus")
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	Input.parse_input_event(space)
+	await _frames(2)
+	space.pressed = false
+	Input.parse_input_event(space)
+	await _frames(1)
+	_check(GameState.tokens == 3 and not hud._feed.has_focus(), "Space after feeding does not feed again")
 	GameState.boss_health_changed.emit(60, 100)
 	_check(hud._boss_box.visible and hud._boss.value == 60, "boss bar consumes existing health signal")
 	GameState.boss_defeated.emit()

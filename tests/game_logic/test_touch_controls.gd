@@ -93,6 +93,13 @@ func _run() -> void:
 	_finger(4, Vector2.ZERO, false, true)
 	await _frames(1)
 	_check(not Input.is_action_pressed("interact"), "canceled touches release their action")
+	GameState.tokens = 3
+	GameState.energy = 0
+	_finger(4, _touch.button_center(&"feed"), true)
+	await _frames(2)
+	_check(GameState.energy > 24 and GameState.tokens == 0, "FEED pad feeds JARVIS")
+	_finger(4, Vector2.ZERO, false)
+	await _frames(1)
 	_finger(5, _touch.button_center(&"move_left"), true)
 	_finger(6, _touch.button_center(&"move_left"), true)
 	_finger(5, Vector2.ZERO, false)
