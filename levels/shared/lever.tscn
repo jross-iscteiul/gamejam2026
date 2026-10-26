@@ -10,30 +10,17 @@ collision_layer = 0
 collision_mask = 2
 script = ExtResource("1")
 
-[node name="Handle" type="ColorRect" parent="."]
-offset_left = -2.0
-offset_top = -6.0
-offset_right = 2.0
-offset_bottom = 10.0
-rotation = -0.5236
-pivot_offset = Vector2(2, 16)
-color = Color(0.9, 0.2, 0.15, 1)
-
-[node name="Base" type="ColorRect" parent="."]
-offset_left = -7.0
-offset_top = 8.0
-offset_right = 7.0
-offset_bottom = 16.0
-color = Color(0.3, 0.32, 0.36, 1)
-
 [node name="Hint" type="Label" parent="."]
 offset_left = -16.0
 offset_top = -24.0
 offset_right = 16.0
 offset_bottom = -10.0
 theme_override_font_sizes/font_size = 8
+theme_override_colors/font_color = Color(0.4, 0.95, 1, 1)
 text = "E"
 horizontal_alignment = 1
+vertical_alignment = 1
+visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("shape")
