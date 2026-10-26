@@ -107,7 +107,7 @@ func _test_hud() -> void:
 	await _frames()
 	var touch := hud._touch_controls as MobileTouchControls
 	var bounds := health_panel.get_global_rect()
-	_check(bounds.position.x > touch.button_center(&"move_right").x + 82 and bounds.end.x < touch.button_center(&"dash").x - 82, "bottom health fits between the mobile touch pads")
+	_check(bounds.position.x > touch.move_bar_rect().end.x and bounds.end.x < touch.button_center(&"dash").x - 82, "bottom health fits between the mobile touch pads")
 	await _capture("timer_health_touch")
 	hud.set_paused(true)
 	var before := GameState.run_clock.elapsed_msec
