@@ -7,14 +7,14 @@ const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const DROP := preload("res://objects/token/token_small.tscn")
 const PAINT_SHADER := preload("res://ui/placeholder_enemy/robot_paint.gdshader")
 
-## Paint jobs over the same robot art: plate, shading, dark shading. The player is the yellow
-## robot, so enemies never come in the original yellow.
-enum Paint { RED_STAR, BLUE, GREEN, PURPLE }
+## Paint jobs over the same robot art: plate, shading, dark shading. YELLOW is the art as drawn.
+enum Paint { RED_STAR, BLUE, GREEN, PURPLE, YELLOW }
 const PAINTS := {
 	Paint.RED_STAR: [Color("e63946"), Color("b0202c"), Color("6e0d14")],
 	Paint.BLUE: [Color("4d8dff"), Color("2a5fc4"), Color("163a80")],
 	Paint.GREEN: [Color("5cc977"), Color("2f8a4e"), Color("1a5230")],
 	Paint.PURPLE: [Color("b072ff"), Color("7a3fc8"), Color("4a2180")],
+	Paint.YELLOW: [Color("ffe119"), Color("ff6d05"), Color("ff0000")],
 }
 ## Where the star sits on the head, in sprite frame pixels (frames are 32x32, facing right).
 const STAR_SPOT := Vector2(13.5, 13.5)
@@ -25,7 +25,7 @@ const STAR_SPOT := Vector2(13.5, 13.5)
 @export var detection_range: float = 240.0
 @export var hit_points: float = 3.0
 ## Paint job; -1 picks one at random so a crowd of minions comes in mixed colours.
-@export_enum("Random:-1", "Red with star:0", "Blue:1", "Green:2", "Purple:3") var paint: int = -1
+@export_enum("Random:-1", "Red with star:0", "Blue:1", "Green:2", "Purple:3", "Yellow:4") var paint: int = -1
 
 var _home: float
 var _direction: float = -1.0
