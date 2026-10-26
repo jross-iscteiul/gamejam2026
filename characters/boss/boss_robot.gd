@@ -195,14 +195,22 @@ func _enter_final_phase() -> void:
 	jarvis.betray(global_position + handover_anchor)
 
 
-## He sinks onto one knee and dims while the contract moves over to JARVIS.
+## He topples over and lies dead on the floor while the contract moves over to JARVIS. His body
+## leaves the enemy layer, so the wreck is scenery: shots fly straight through it.
 func _power_down() -> void:
+	collision_layer = 0
 	_sprite.play(&"idle")
-	_sprite.speed_scale = 0.25
+	_sprite.speed_scale = 0.0
+	var rest := _sprite.position
 	var tween := create_tween().set_parallel()
-	tween.tween_property(_sprite, "modulate", Color(0.4, 0.38, 0.5, 1.0), 1.2)
-	tween.tween_property(_sprite, "scale:y", _sprite.scale.y * 0.86, 1.2) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_property(_sprite, "modulate", Color(0.35, 0.33, 0.42, 1.0), 0.8)
+	# Fall around his feet (the node origin): the sprite's offset turns with the rotation.
+	tween.tween_method(func(angle: float) -> void:
+		_sprite.rotation = angle
+		_sprite.position = rest.rotated(angle), 0.0, deg_to_rad(-90.0 * _facing), 0.8) \
+		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	_shake_camera()
 
 
 ## Called when the whole network goes dark (JARVIS shot down), so he collapses with his minions.
@@ -210,6 +218,8 @@ func shut_down() -> void:
 	_final_phase = true
 	_disable_areas()
 	_sprite.speed_scale = 0.0
+	if collision_layer == 0:
+		return # already lying dead on the floor since the handover
 	var tween := create_tween().set_parallel()
 	tween.tween_property(_sprite, "modulate", Color(0.2, 0.2, 0.25, 0.0), 1.0)
 	tween.tween_property(_sprite, "rotation", deg_to_rad(80.0 * _facing), 1.0) \

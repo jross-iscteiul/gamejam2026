@@ -17,6 +17,10 @@ level_number = 4
 position = Vector2(1520, 352)
 minion_spawn_offset = Vector2(-26, -16)
 
+[node name="MinionDoorLeft" parent="." instance=ExtResource("6")]
+position = Vector2(848, 352)
+minion_spawn_offset = Vector2(26, -16)
+
 [node name="small1" parent="." instance=ExtResource("2")]
 position = Vector2(208, 328)
 
@@ -38,27 +42,6 @@ position = Vector2(720, 328)
 [node name="small7" parent="." instance=ExtResource("2")]
 position = Vector2(784, 328)
 
-[node name="small8" parent="." instance=ExtResource("2")]
-position = Vector2(976, 136)
-
-[node name="small9" parent="." instance=ExtResource("2")]
-position = Vector2(1008, 136)
-
-[node name="small10" parent="." instance=ExtResource("2")]
-position = Vector2(1072, 232)
-
-[node name="small11" parent="." instance=ExtResource("2")]
-position = Vector2(1136, 232)
-
-[node name="small12" parent="." instance=ExtResource("2")]
-position = Vector2(1200, 232)
-
-[node name="small13" parent="." instance=ExtResource("2")]
-position = Vector2(1360, 136)
-
-[node name="small14" parent="." instance=ExtResource("2")]
-position = Vector2(1424, 136)
-
 [node name="small15" parent="." instance=ExtResource("2")]
 position = Vector2(912, 328)
 
@@ -76,12 +59,6 @@ position = Vector2(1392, 328)
 
 [node name="small20" parent="." instance=ExtResource("2")]
 position = Vector2(1456, 328)
-
-[node name="big1" parent="." instance=ExtResource("3")]
-position = Vector2(1136, 200)
-
-[node name="big2" parent="." instance=ExtResource("3")]
-position = Vector2(1392, 104)
 
 [node name="enemy1" parent="." instance=ExtResource("4")]
 position = Vector2(496, 336)

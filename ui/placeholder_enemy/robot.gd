@@ -97,6 +97,9 @@ func shut_down() -> void:
 	_dead = true
 	_disable_areas()
 	_sprite.pause()
+	_burst_sparks()
+	# A white flash as the signal cuts out, then he keels over and goes dark.
+	_sprite.modulate = Color(3.0, 3.0, 3.0)
 	var tween := create_tween()
 	tween.set_parallel()
 	tween.tween_property(_sprite, "modulate", Color(0.25, 0.25, 0.3, 0.0), 1.0)
@@ -104,6 +107,24 @@ func shut_down() -> void:
 		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	await tween.finished
 	queue_free()
+
+
+func _burst_sparks() -> void:
+	var sparks := CPUParticles2D.new()
+	sparks.one_shot = true
+	sparks.explosiveness = 1.0
+	sparks.amount = 12
+	sparks.lifetime = 0.5
+	sparks.direction = Vector2.UP
+	sparks.spread = 120.0
+	sparks.initial_velocity_min = 40.0
+	sparks.initial_velocity_max = 100.0
+	sparks.gravity = Vector2(0.0, 300.0)
+	sparks.scale_amount_min = 1.0
+	sparks.scale_amount_max = 2.0
+	sparks.color = Color(0.55, 0.85, 1.0)
+	add_child(sparks)
+	sparks.emitting = true
 
 
 ## A downed unit must be harmless to walk over: the contact hitbox has to stop being monitorable
@@ -122,7 +143,8 @@ func _die(killer: Node) -> void:
 	_dead = true
 	_disable_areas() # a corpse must not damage the player on the frame it dies
 	GameState.enemy_killed.emit(self, killer)
-	var drop := DROP.instantiate()
-	get_parent().add_child.call_deferred(drop)
-	drop.set_deferred("global_position", global_position + Vector2(0, -10))
+	if not GameState.jarvis_hostile: # no coins once JARVIS has turned: nothing to feed
+		var drop := DROP.instantiate()
+		get_parent().add_child.call_deferred(drop)
+		drop.set_deferred("global_position", global_position + Vector2(0, -10))
 	queue_free()

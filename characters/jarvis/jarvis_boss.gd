@@ -92,7 +92,7 @@ var _dash_direction: float = 1.0
 var _home := Vector2.ZERO # safe spot to put him back if he ever falls out of the arena
 ## Units in the pods still holding the shield up, and their hurtboxes.
 var _pods: Array[Node2D] = []
-var _pod_boxes: Array[Hurtbox] = []
+var _pod_boxes: Array[PodHurtbox] = []
 var shield_up: bool = false
 var _shield_fx: Node2D
 
@@ -344,6 +344,43 @@ func _missiles() -> void:
 
 
 #region Shield
+## Hurtbox of one pod. The shoulder pods sit on either side of the machine and the shield
+## covers its back, so a shoulder pod only takes shots that come from its own side: the player
+## has to cross over to reach the far one. The chest pod takes shots from either side.
+class PodHurtbox extends Hurtbox:
+	var mech: Node2D
+	## World side the pod is pinned to (-1, 0, 1), fixed when it is armed: the chassis turns
+	## to face the player, but the pods must not swap sides with it or the back one could
+	## never be reached.
+	var pinned_side: float = 0.0
+	signal blocked
+
+	## Keeps the unit on its pinned side however the chassis is facing.
+	func pin() -> void:
+		var unit := get_parent() as Node2D
+		if pinned_side != 0.0:
+			unit.position.x = absf(unit.position.x) * pinned_side * signf(mech.scale.x)
+
+	## Which side of the machine the pod is on right now: -1 left, 1 right, 0 middle. The
+	## chassis flips to face the player, so this changes when the player crosses over.
+	func side() -> float:
+		var offset: float = (get_parent() as Node2D).global_position.x - mech.global_position.x
+		return 0.0 if absf(offset) < 4.0 else signf(offset)
+
+	## [param from]: which side the shot came from (-1 left, 1 right).
+	func accepts_from(from: float) -> bool:
+		return side() == 0.0 or side() == from
+
+	func receive_hit(hitbox: Hitbox) -> void:
+		var travel: Variant = hitbox.get("direction")
+		var from := -signf(travel.x) if travel is Vector2 and not is_zero_approx(travel.x) \
+			else signf(hitbox.global_position.x - mech.global_position.x)
+		if not accepts_from(from):
+			blocked.emit()
+			return
+		super(hitbox)
+
+
 ## A unit in a pod becomes a shield generator: it gets its own health and a hurtbox on the
 ## enemy layer, so player shots that hit it count.
 func _arm_pod(unit: Node2D) -> void:
@@ -354,8 +391,12 @@ func _arm_pod(unit: Node2D) -> void:
 	health.max_health = pod_health
 	health.invincibility_duration = 0.05
 	unit.add_child(health)
-	var hurtbox := Hurtbox.new()
+	var hurtbox := PodHurtbox.new()
+	hurtbox.mech = _jarvis.mech
+	hurtbox.blocked.connect(_flash_shield)
 	hurtbox.name = "PodHurtbox"
+	if absf(unit.position.x) >= 4.0:
+		hurtbox.pinned_side = signf(unit.global_position.x - _jarvis.mech.global_position.x)
 	hurtbox.health = health
 	hurtbox.collision_layer = 4
 	hurtbox.collision_mask = 8
@@ -373,7 +414,7 @@ func _arm_pod(unit: Node2D) -> void:
 	_pod_boxes.append(hurtbox)
 
 
-func _pop_pod(_killer: Node, unit: Node2D, hurtbox: Hurtbox) -> void:
+func _pop_pod(_killer: Node, unit: Node2D, hurtbox: PodHurtbox) -> void:
 	if _dead:
 		return
 	_pods.erase(unit)
@@ -422,6 +463,12 @@ func _raise_shield() -> void:
 	_hurtbox.set_deferred("monitoring", false)
 	_hurtbox.set_deferred("monitorable", false)
 	_shield_fx.show()
+
+
+## A shot from the wrong side splashes off the shield.
+func _flash_shield() -> void:
+	_shield_fx.modulate = Color(2.0, 2.0, 2.0)
+	_shield_fx.create_tween().tween_property(_shield_fx, "modulate", Color.WHITE, 0.15)
 
 
 func _disable_area(area: Area2D) -> void:
@@ -513,6 +560,8 @@ func _animate(delta: float) -> void:
 	mech.airborne = _walker != null and not _walker.is_on_floor()
 	var lean := 0.0 if _dash_left <= 0.0 else deg_to_rad(10.0 * _jarvis.facing)
 	mech.rotation = lerp_angle(mech.rotation, lean, 1.0 - exp(-12.0 * delta))
+	for box in _pod_boxes:
+		box.pin()
 	if _shield_fx != null and _shield_fx.visible:
 		_shield_fx.queue_redraw()
 
@@ -569,6 +618,9 @@ func _die(killer: Node) -> void:
 ## powers down with him instead of fighting on.
 func _black_out() -> void:
 	get_tree().call_group("minion_door", "shut_down")
+	# Missiles still in the air would land and drop fresh minions after the fact.
+	for projectile in get_tree().get_nodes_in_group("enemy_projectile"):
+		projectile.queue_free()
 	for enemy in get_tree().get_nodes_in_group("enemy"):
 		if enemy != _jarvis and enemy.has_method("shut_down"):
 			enemy.shut_down()

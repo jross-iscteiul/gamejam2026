@@ -51,6 +51,7 @@ func _ready() -> void:
 	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_energy(GameState.energy))
 	GameState.god_mode_changed.connect(_on_god_mode_changed)
 	GameState.boss_health_changed.connect(_update_boss)
+	GameState.player_died.connect(_flash_death)
 	GameState.boss_label_changed.connect(_update_boss_label)
 	GameState.boss_defeated.connect(_boss_defeated)
 	GameState.jarvis_say.connect(_say)
@@ -283,13 +284,27 @@ func _layout_bottom_bars() -> void:
 		_boss_label.add_theme_font_size_override("font_size", 16)
 		_boss.custom_minimum_size.y = 14
 		return
-	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	# The main boss bar runs along the top, right under the HUD panel, clear of the fight.
+	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_boss_box.offset_left = -420
 	_boss_box.offset_right = 420
-	_boss_box.offset_top = -480 if _touch_controls.visible else -240
-	_boss_box.offset_bottom = -392 if _touch_controls.visible else -152
+	_boss_box.offset_top = 132
+	_boss_box.offset_bottom = 200
 	_boss_label.add_theme_font_size_override("font_size", 24)
 	_boss.custom_minimum_size.y = 32
+
+
+## A red flash over the whole screen so a death is impossible to miss.
+func _flash_death() -> void:
+	var flash := ColorRect.new()
+	flash.color = Color(0.9, 0.1, 0.1, 0.45)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(flash)
+	_root.move_child(flash, 0) # under the HUD panels
+	var tween := flash.create_tween()
+	tween.tween_property(flash, "color:a", 0.0, 0.6).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(flash.queue_free)
 
 
 func _update_boss(value: float, maximum: float) -> void:
