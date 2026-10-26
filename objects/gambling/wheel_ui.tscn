@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://objects/gambling/wheel_ui.gd" id="1_wheelui"]
 [ext_resource type="Script" path="res://objects/gambling/wheel.gd" id="2_wheel"]
 [ext_resource type="Script" path="res://objects/gambling/wheel_frame.gd" id="3_frame"]
 [ext_resource type="Script" path="res://objects/gambling/wheel_cabinet.gd" id="4_cabinet"]
+[ext_resource type="Script" path="res://objects/gambling/cards_view.gd" id="5_cards"]
 
 [node name="WheelUI" type="CanvasLayer"]
 process_mode = 3
@@ -13,49 +14,31 @@ script = ExtResource("1_wheelui")
 [node name="Dim" type="ColorRect" parent="."]
 offset_right = 640.0
 offset_bottom = 360.0
-color = Color(0.03, 0.04, 0.08, 0.6)
+color = Color(0.03, 0.04, 0.08, 0.3)
 
 [node name="Cabinet" type="Node2D" parent="."]
 script = ExtResource("4_cabinet")
 
 [node name="Wheel" type="Node2D" parent="."]
-position = Vector2(320, 142)
+position = Vector2(320, 162)
 script = ExtResource("2_wheel")
 
 [node name="Frame" type="Node2D" parent="."]
-position = Vector2(320, 142)
+position = Vector2(320, 162)
 script = ExtResource("3_frame")
 
-[node name="JarvisLabel" type="Label" parent="."]
-offset_left = 144.0
-offset_top = 252.0
-offset_right = 672.0
-offset_bottom = 285.0
-scale = Vector2(0.6666667, 0.6666667)
-theme_override_colors/font_color = Color(0.43, 1, 0.54, 1)
-theme_override_font_sizes/font_size = 8
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
+[node name="Cards" type="Node2D" parent="."]
+position = Vector2(320, 140)
+script = ExtResource("5_cards")
 
 [node name="ResultLabel" type="Label" parent="."]
-offset_left = 144.0
-offset_top = 276.0
-offset_right = 496.0
-offset_bottom = 290.0
-theme_override_colors/font_color = Color(0.43, 1, 0.54, 1)
-theme_override_constants/outline_size = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 8
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="InfoLabel" type="Label" parent="."]
-offset_left = 144.0
-offset_top = 294.0
-offset_right = 496.0
-offset_bottom = 320.0
-theme_override_colors/font_color = Color(0.43, 1, 0.54, 0.7)
+offset_left = 140.0
+offset_top = 264.0
+offset_right = 500.0
+offset_bottom = 280.0
+theme_override_colors/font_color = Color(0.85, 0.93, 1, 1)
+theme_override_constants/outline_size = 3
+theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.1, 1)
 theme_override_font_sizes/font_size = 8
 horizontal_alignment = 1
 vertical_alignment = 1

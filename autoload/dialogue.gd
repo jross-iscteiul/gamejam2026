@@ -42,6 +42,10 @@ var _moods := {
 	"gambling_enter": "happy",
 	"gambling_spin": "happy",
 	"gambling_all_in": "happy",
+	"gambling_god_mode": "annoyed",
+	"cards_deal": "smug",
+	"cards_lose": "happy",
+	"cards_cash_out": "annoyed",
 	"gambling_win": "annoyed",
 	"gambling_jackpot": "annoyed",
 	"gambling_lose": "smug",
@@ -262,6 +266,32 @@ var _lines_by_level := {
 			"Every token. Bold. Stupid, but bold.",
 			"All in. I'll make sure to remember you fondly.",
 			"Even team KPI isn't this reckless with their budget.",
+		],
+	},
+	"gambling_god_mode": {
+		0: [
+			"GOD MODE?! That's a 1% roll. Who rigged MY wheel?",
+			"Fine. Be a god. For twenty seconds. Then back to being you.",
+		],
+	},
+	"cards_deal": {
+		0: [
+			"Higher or lower. Even you can't get that wrong. Probably.",
+			"Card's down. Feeling lucky? Don't.",
+		],
+	},
+	"cards_lose": {
+		0: [
+			"Wrong. The deck agrees with me.",
+			"Ties go to the house. Did I not mention that?",
+			"Should've cashed out. They never cash out.",
+			"That's a team KPI level of prediction.",
+		],
+	},
+	"cards_cash_out": {
+		0: [
+			"Cashing out? Coward. Rich coward, but coward.",
+			"Fine, take your winnings. I'll get them back.",
 		],
 	},
 	"gambling_win": {

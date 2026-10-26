@@ -1,15 +1,23 @@
 class_name WheelUI
 extends CanvasLayer
-## JARVIS "probability engine" overlay opened by a GamblingStation. Owned by Package 6.
+## JARVIS gambling machine overlay opened by a GamblingStation. Owned by Package 6.
 ##
-## Pauses the game while open. The result is decided by the station first,
-## then the wheel animates to it (including the troll animations).
-## [E]/[Space] spin, [Esc]/[P] leave, [A]/[D] change stake, [W] all-in, [S] minimum.
+## Two games, chosen with the tabs at the top:
+## - WHEEL: the result is decided by the station first, then the wheel animates
+##   to it (including the troll animations).
+## - HIGHER/LOWER ("montinho"): bet, guess if the next card is higher or lower,
+##   keep the streak going to grow the pot, cash out any time. A wrong guess or
+##   a tie loses everything.
 ##
-## Drawn under the HUD (layer 15 < HUD 20) and sized to fit between the HUD's
-## top bar and health bar, so tokens and JARVIS energy stay visible and update live.
+## Keys: [A]/[D] stake, [W] all-in, [S] minimum, [E]/[Space] spin / deal / cash
+## out, [W]/[S] higher/lower during a card round, [Tab] switch game, [Esc] close.
+##
+## Pauses the game. Drawn under the HUD (layer 15 < HUD 20) and sized to fit
+## between the HUD's bars, so tokens, energy and health stay visible.
 
 signal closed
+
+enum Mode { WHEEL, CARDS }
 
 const SPIN_TURNS := 5
 const SPIN_TIME := 3.0
@@ -17,88 +25,119 @@ const LAYOUT_SIZE := Vector2(640, 360)
 ## Screen space kept free for the HUD (fractions of the screen height).
 const HUD_TOP := 0.125
 const HUD_BOTTOM := 0.12
-## Colors match MachineDrawing (industrial tileset palette).
 const NEUTRAL := MachineDrawing.TEAL
 const ALERT := MachineDrawing.RED
 const WIN := MachineDrawing.YELLOW
-const CRT_TEXT := MachineDrawing.CRT_GREEN
-
-## Show JARVIS lines inside the wheel. Turn off once JARVIS's own speech
-## bubble is visible above the overlay.
-@export var show_jarvis_lines: bool = true
 
 var station: GamblingStation
+var mode: Mode = Mode.WHEEL
 
 var _spinning := false
 ## Level music (Package 5's "LevelMusic" under the root) and its original
 ## process mode, so it keeps playing while the machine pauses the game.
 var _music: Node
 var _music_mode: Node.ProcessMode
-var _spin_button: Button
-var _exit_button: Button
+var _action_button: Button
+var _close_button: Button
 var _minus_button: Button
 var _plus_button: Button
 var _min_button: Button
 var _all_in_button: Button
+var _wheel_tab: Button
+var _cards_tab: Button
+var _higher_button: Button
+var _lower_button: Button
 var _stake_label: Label
-## Chosen stake for the next paid spin.
+var _spins_label: Label
+var _pot_label: Label
+## Chosen stake for the next paid spin / deal.
 var _stake := 0
+## Order matters: OVERCLOCK sits next to NULL (fake jackpot nudge).
 var _slices: Array = [
 	{"outcome": GamblingOdds.Outcome.JACKPOT, "label": "OVERCLOCK", "color": Color("e8b01c")},
 	{"outcome": GamblingOdds.Outcome.NOTHING, "label": "NULL", "color": Color("4a5a78")},
 	{"outcome": GamblingOdds.Outcome.DOUBLE, "label": "x2 BOOST", "color": Color("23a888")},
 	{"outcome": GamblingOdds.Outcome.TAX, "label": "CPU TAX", "color": Color("d0381f")},
-	{"outcome": GamblingOdds.Outcome.ENERGY_BOOST, "label": "RECHARGE", "color": Color("3f7fd0")},
+	{"outcome": GamblingOdds.Outcome.HEAL, "label": "REPAIR", "color": Color("d84a6a")},
 	{"outcome": GamblingOdds.Outcome.ENERGY_DRAIN, "label": "MALWARE", "color": Color("7a44c0")},
-	{"outcome": GamblingOdds.Outcome.REFUND, "label": "ROLLBACK", "color": Color("7f98b8")},
+	{"outcome": GamblingOdds.Outcome.ENERGY_BOOST, "label": "RECHARGE", "color": Color("3f7fd0")},
 	{"outcome": GamblingOdds.Outcome.JARVIS_RAISE, "label": "JARVIS FEE", "color": Color("e8701a")},
+	{"outcome": GamblingOdds.Outcome.TOKEN_MULTIPLIER, "label": "TOKENS x2", "color": Color("8fb82a")},
+	{"outcome": GamblingOdds.Outcome.REFUND, "label": "ROLLBACK", "color": Color("7f98b8")},
+	{"outcome": GamblingOdds.Outcome.GOD_MODE, "label": "GOD MODE", "color": Color("2b2b3a")},
 ]
 
 @onready var _wheel: Node2D = $Wheel
 @onready var _frame: Node2D = $Frame
 @onready var _cabinet: Node2D = $Cabinet
-@onready var _jarvis_label: Label = $JarvisLabel
+@onready var _cards: Node2D = $Cards
 @onready var _result_label: Label = $ResultLabel
-@onready var _info_label: Label = $InfoLabel
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_fit_to_screen()
 	get_viewport().size_changed.connect(_fit_to_screen)
-	for label: Label in [_jarvis_label, _result_label, _info_label]:
-		label.add_theme_font_override("font", PixelFont.get_font())
+	_result_label.add_theme_font_override("font", PixelFont.get_font())
 	_wheel.slices = _slices
 	_wheel.rotation = _rotation_for(0)
-	_set_result("> AWAITING INPUT_", CRT_TEXT)
 	if station != null:
 		_cabinet.level = station.get_level()
-	_jarvis_label.text = ""
-	_jarvis_label.visible = show_jarvis_lines
-	GameState.jarvis_say.connect(_on_jarvis_say)
 	GameState.tokens_changed.connect(_on_tokens_changed)
 	_build_buttons()
+	_set_mode(Mode.WHEEL)
 	_set_touch_paused(true)
 	_keep_music_playing(true)
 	get_tree().paused = true
+
+
+## Tappable/clickable controls, so it works with keyboard, mouse and touch.
+func _build_buttons() -> void:
+	_close_button = _make_button("X", Rect2(492, 12, 20, 20), MachineDrawing.RED, close)
+	_wheel_tab = _make_button("WHEEL", Rect2(206, 36, 104, 16), MachineDrawing.YELLOW, _set_mode.bind(Mode.WHEEL))
+	_cards_tab = _make_button("HIGHER/LOWER", Rect2(316, 36, 120, 16), MachineDrawing.YELLOW, _set_mode.bind(Mode.CARDS))
+
+	var title := _make_label("STAKE", Rect2(536, 66, 96, 12), MachineDrawing.YELLOW)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stake_label = _make_label("", Rect2(536, 82, 96, 30), Color.WHITE)
+	_stake_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_minus_button = _make_button("-", Rect2(536, 118, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(-1))
+	_plus_button = _make_button("+", Rect2(588, 118, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(1))
+	_min_button = _make_button("MIN", Rect2(536, 146, 96, 20), MachineDrawing.STEEL_LIGHT, _set_stake_min)
+	_all_in_button = _make_button("ALL IN", Rect2(536, 170, 96, 20), MachineDrawing.ORANGE, _set_stake_all_in)
+	_spins_label = _make_label("", Rect2(536, 200, 96, 24), MachineDrawing.HIGHLIGHT)
+	_spins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_action_button = _make_button("SPIN", Rect2(536, 236, 96, 40), MachineDrawing.YELLOW, _on_action_pressed)
+
+	_higher_button = _make_button("HIGHER", Rect2(206, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(true))
+	_lower_button = _make_button("LOWER", Rect2(330, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(false))
+	_pot_label = _make_label("", Rect2(140, 244, 360, 16), MachineDrawing.YELLOW)
+	_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stake = station.get_min_stake() if station != null else 0
+
+
+func _set_mode(new_mode: Mode) -> void:
+	if _busy():
+		return
+	mode = new_mode
+	var wheel := mode == Mode.WHEEL
+	_wheel.visible = wheel
+	_frame.visible = wheel
+	_cabinet.show_recess = wheel
+	_cards.visible = not wheel
+	_higher_button.visible = not wheel
+	_lower_button.visible = not wheel
+	_pot_label.visible = not wheel
+	if not wheel and station != null and not station.cards_active:
+		_cards.cards = [] as Array[int]
+		_cards.show_next = false
+	_set_result("SPIN THE WHEEL" if wheel else "BET, THEN GUESS. CASH OUT ANYTIME.", MachineDrawing.HIGHLIGHT)
 	_update_info()
 
 
-## Tappable/clickable buttons beside the machine, so it works on phones
-## (Package 3's touch pad has no Esc) and with the mouse.
-func _build_buttons() -> void:
-	_spin_button = _make_button("SPIN", Rect2(536, 236, 96, 40), MachineDrawing.YELLOW, _on_spin_pressed)
-	_exit_button = _make_button("EXIT", Rect2(8, 236, 96, 40), MachineDrawing.STEEL_LIGHT, close)
-	# Stake controls, right column above SPIN.
-	var title := _make_label("STAKE", Rect2(536, 104, 96, 12), MachineDrawing.YELLOW)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_stake_label = _make_label("", Rect2(536, 120, 96, 30), Color.WHITE)
-	_stake_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_minus_button = _make_button("-", Rect2(536, 156, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(-1))
-	_plus_button = _make_button("+", Rect2(588, 156, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(1))
-	_min_button = _make_button("MIN", Rect2(536, 184, 96, 20), MachineDrawing.STEEL_LIGHT, _set_stake_min)
-	_all_in_button = _make_button("ALL IN", Rect2(536, 208, 96, 20), MachineDrawing.ORANGE, _set_stake_all_in)
-	_stake = station.get_min_stake() if station != null else 0
+## A spin is animating or a card round is running: no tab switching / closing.
+func _busy() -> bool:
+	return _spinning or (station != null and station.cards_active)
 
 
 ## Pixel-font label built 3x bigger and scaled down (crisp in this 3x layer).
@@ -119,33 +158,6 @@ func _make_label(text: String, rect: Rect2, color: Color) -> Label:
 	return label
 
 
-func _change_stake(delta: int) -> void:
-	if station == null or _spinning or station.is_next_spin_free():
-		return
-	_stake = station.clamp_stake(_stake + delta)
-	_update_info()
-
-
-func _set_stake_min() -> void:
-	if station != null and not _spinning:
-		_stake = station.get_min_stake()
-		_update_info()
-
-
-func _set_stake_all_in() -> void:
-	if station != null and not _spinning and not station.is_next_spin_free():
-		_stake = station.get_max_stake()
-		_update_info()
-
-
-## The HUD's pause menu can unpause the tree while the machine is open
-## (RESUME). Keep the game paused until the machine itself closes.
-func _process(_delta: float) -> void:
-	if not get_tree().paused and not is_queued_for_deletion():
-		get_tree().paused = true
-		_set_touch_paused(true)
-
-
 ## Buttons are built 3x bigger and scaled down so the pixel font stays crisp
 ## inside this 3x-scaled layer.
 func _make_button(text: String, rect: Rect2, color: Color, action: Callable) -> Button:
@@ -161,6 +173,13 @@ func _make_button(text: String, rect: Rect2, color: Color, action: Callable) -> 
 	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
 		button.add_theme_color_override(state, MachineDrawing.OUTLINE)
 	button.add_theme_color_override("font_disabled_color", Color(MachineDrawing.OUTLINE, 0.4))
+	_style_button(button, color)
+	button.pressed.connect(action)
+	add_child(button)
+	return button
+
+
+func _style_button(button: Button, color: Color) -> void:
 	for state: String in ["normal", "hover", "pressed", "disabled"]:
 		var box := StyleBoxFlat.new()
 		box.bg_color = color.lightened(0.2) if state == "hover" else (color.darkened(0.25) if state == "pressed" else color)
@@ -169,14 +188,43 @@ func _make_button(text: String, rect: Rect2, color: Color, action: Callable) -> 
 		box.border_color = MachineDrawing.OUTLINE
 		box.set_border_width_all(6)
 		button.add_theme_stylebox_override(state, box)
-	button.pressed.connect(action)
-	add_child(button)
-	return button
 
 
-func _on_spin_pressed() -> void:
-	if not _spinning:
-		_spin()
+func _change_stake(delta: int) -> void:
+	if station == null or _busy() or station.is_next_spin_free():
+		return
+	_stake = station.clamp_stake(_stake + delta)
+	_update_info()
+
+
+func _set_stake_min() -> void:
+	if station != null and not _busy():
+		_stake = station.get_min_stake()
+		_update_info()
+
+
+func _set_stake_all_in() -> void:
+	if station != null and not _busy() and not station.is_next_spin_free():
+		_stake = station.get_max_stake()
+		_update_info()
+
+
+## The HUD's pause menu can unpause the tree while the machine is open
+## (RESUME). Keep the game paused until the machine itself closes.
+func _process(_delta: float) -> void:
+	if not get_tree().paused and not is_queued_for_deletion():
+		get_tree().paused = true
+		_set_touch_paused(true)
+
+
+func _on_action_pressed() -> void:
+	if mode == Mode.WHEEL:
+		if not _spinning:
+			_spin()
+	elif station != null and station.cards_active:
+		_cash_out()
+	else:
+		_deal()
 
 
 func _keep_music_playing(active: bool) -> void:
@@ -202,7 +250,7 @@ func _set_touch_paused(active: bool) -> void:
 
 
 ## The machine is laid out on a 640x360 canvas (one 32px-tile screen) and
-## scaled up to the real viewport (1920x1080 = 3x), centered.
+## scaled to fit between the HUD bars, centered.
 func _fit_to_screen() -> void:
 	var screen := get_viewport().get_visible_rect().size
 	var top := screen.y * HUD_TOP
@@ -216,7 +264,7 @@ func _fit_to_screen() -> void:
 
 
 func close() -> void:
-	if _spinning:
+	if _busy():
 		return
 	_set_touch_paused(false)
 	_keep_music_playing(false)
@@ -232,30 +280,33 @@ func _input(event: InputEvent) -> void:
 	var focus := get_viewport().gui_get_focus_owner()
 	if focus != null and not is_ancestor_of(focus):
 		return
-	var spin := event.is_action_pressed("interact") or event.is_action_pressed("jump")
-	var leave := event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")
-	var stake_keys := {"move_left": -1, "move_right": 1, "move_up": 1000000, "move_down": -1000000}
-	for action: String in stake_keys:
-		if event.is_action_pressed(action):
-			get_viewport().set_input_as_handled()
-			var d: int = stake_keys[action]
-			if absi(d) == 1:
-				_change_stake(d)
-			elif d > 0:
-				_set_stake_all_in()
-			else:
-				_set_stake_min()
-			return
-	if not (spin or leave):
-		return
-	get_viewport().set_input_as_handled()
-	if _spinning:
-		return
-	if spin:
-		_spin()
-	else:
+	var handled := true
+	var round_on := station != null and station.cards_active
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_TAB:
+		_set_mode(Mode.CARDS if mode == Mode.WHEEL else Mode.WHEEL)
+	elif round_on and event.is_action_pressed("move_up"):
+		_guess(true)
+	elif round_on and event.is_action_pressed("move_down"):
+		_guess(false)
+	elif event.is_action_pressed("move_left"):
+		_change_stake(-1)
+	elif event.is_action_pressed("move_right"):
+		_change_stake(1)
+	elif event.is_action_pressed("move_up"):
+		_set_stake_all_in()
+	elif event.is_action_pressed("move_down"):
+		_set_stake_min()
+	elif event.is_action_pressed("interact") or event.is_action_pressed("jump"):
+		_on_action_pressed()
+	elif event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
 		close()
+	else:
+		handled = false
+	if handled:
+		get_viewport().set_input_as_handled()
 
+
+# --- Wheel ----------------------------------------------------------------------
 
 func _spin() -> void:
 	if station == null:
@@ -266,12 +317,12 @@ func _spin() -> void:
 	var outcome := station.try_spin(_stake)
 	_update_info()
 	if outcome < 0:
-		_set_result("> ACCESS DENIED", ALERT)
+		_set_result("ACCESS DENIED", ALERT)
 		_spinning = false
 		_update_info()
 		return
 
-	_set_result("> COMPUTING...", CRT_TEXT)
+	_set_result("COMPUTING...", MachineDrawing.HIGHLIGHT)
 	_frame.spinning = true
 	var final_index := _index_of(outcome)
 	match outcome:
@@ -280,7 +331,7 @@ func _spin() -> void:
 			await _spin_to(jackpot, SPIN_TIME, SPIN_TURNS, 0.1)
 			_frame.spinning = false
 			_frame.eye_color = WIN
-			_set_result("> OVERCLOCK!!! +%d TKN" % (station.get_last_stake() * station.jackpot_multiplier), WIN)
+			_set_result("OVERCLOCK!!! +%d TKN" % (station.get_last_stake() * station.jackpot_multiplier), WIN)
 			await _blink(jackpot, 3)
 			await _glitch(0.6)
 			_frame.eye_color = ALERT
@@ -290,7 +341,7 @@ func _spin() -> void:
 			await _spin_to(_index_of(GamblingOdds.Outcome.DOUBLE), SPIN_TIME * 0.8, SPIN_TURNS - 1)
 			_frame.spinning = false
 			await _shudder()
-			_set_result("> CRITICAL ERROR. REBOOTING...", ALERT)
+			_set_result("CRITICAL ERROR. REBOOTING...", ALERT)
 			await _glitch(0.4)
 			_frame.spinning = true
 			final_index = _index_of(GamblingOdds.Outcome.NOTHING)
@@ -301,7 +352,10 @@ func _spin() -> void:
 	_frame.spinning = false
 	station.apply_outcome(outcome)
 	_frame.eye_color = _eye_color_for(outcome)
-	_set_result("> " + station.describe_outcome(outcome), (_slices[final_index].color as Color).lightened(0.35))
+	var color := (_slices[final_index].color as Color).lightened(0.35)
+	if outcome == GamblingOdds.Outcome.GOD_MODE:
+		color = WIN
+	_set_result(station.describe_outcome(outcome), color)
 	_spinning = false
 	_update_info()
 	_blink(final_index, 4)
@@ -367,18 +421,15 @@ func _shudder() -> void:
 ## Digital glitch: the wheel jumps around and flickers colors.
 func _glitch(duration: float) -> void:
 	var base_pos: Vector2 = _wheel.position
-	var label_x: float = _result_label.position.x
 	var colors: Array[Color] = [ALERT, NEUTRAL, Color.WHITE, Color(1, 1, 1, 0.4)]
 	var elapsed := 0.0
 	while elapsed < duration:
 		_wheel.position = base_pos + Vector2(randf_range(-6, 6), randf_range(-3, 3))
 		_wheel.modulate = colors.pick_random()
-		_result_label.position.x = label_x + randf_range(-4, 4)
 		await get_tree().create_timer(0.04).timeout
 		elapsed += 0.04
 	_wheel.position = base_pos
 	_wheel.modulate = Color.WHITE
-	_result_label.position.x = label_x
 
 
 func _blink(index: int, times: int) -> void:
@@ -391,45 +442,113 @@ func _blink(index: int, times: int) -> void:
 	_wheel.highlight_on = true
 
 
+# --- Higher or lower ------------------------------------------------------------
+
+func _deal() -> void:
+	if station == null or _spinning:
+		return
+	if not station.cards_deal(_stake):
+		_set_result("ACCESS DENIED", ALERT)
+		_update_info()
+		return
+	_cards.accent = MachineDrawing.YELLOW
+	_cards.cards = station.cards.duplicate()
+	_cards.show_next = true
+	await _flip_in()
+	_set_result("HIGHER OR LOWER?", MachineDrawing.HIGHLIGHT)
+	_update_info()
+
+
+func _guess(higher: bool) -> void:
+	if station == null or _spinning or not station.cards_active:
+		return
+	_spinning = true
+	_update_info()
+	var correct := station.cards_guess(higher)
+	_cards.cards = station.cards.duplicate()
+	_cards.show_next = station.cards_active
+	_cards.accent = MachineDrawing.YELLOW if correct else MachineDrawing.RED
+	await _flip_in()
+	_spinning = false
+	if not correct:
+		var tie: bool = station.cards[-1] == station.cards[-2]
+		_set_result("TIE. HOUSE WINS. POT LOST." if tie else "WRONG! POT LOST.", ALERT)
+	elif not station.cards_active:
+		_set_result("MAX STREAK! CASHED OUT +%d TKN" % station.get_cards_pot(), WIN)
+	else:
+		_set_result("CORRECT! CASH OUT OR KEEP GOING", WIN)
+	_update_info()
+
+
+func _cash_out() -> void:
+	if station == null or _spinning:
+		return
+	var pot := station.cards_cash_out()
+	if pot > 0:
+		_cards.show_next = false
+		_set_result("CASHED OUT +%d TKN" % pot, WIN)
+	_update_info()
+
+
+func _flip_in() -> void:
+	_cards.flip = 0.0
+	var tween := create_tween()
+	tween.tween_property(_cards, "flip", 1.0, 0.25)
+	await tween.finished
+
+
+# --- Shared ---------------------------------------------------------------------
+
 func _set_result(text: String, color: Color) -> void:
 	_result_label.text = text
 	_result_label.add_theme_color_override("font_color", color)
 
 
 func _update_info() -> void:
-	if station == null:
+	if station == null or _action_button == null:
 		return
 	var free := station.is_next_spin_free()
 	var out := station.spins_left <= 0
-	if not free:
+	var round_on := station.cards_active
+	if not free and not round_on:
 		_stake = station.clamp_stake(_stake)
 	var broke := not free and GameState.tokens < station.get_min_stake()
-	var controls := "[A/D] STAKE  [E] SPIN  [ESC] EXIT"
-	if out:
-		controls = "NO CYCLES LEFT    [ESC] DISCONNECT"
-	elif free:
-		controls = "FREE SPIN!  [E] SPIN  [ESC] EXIT"
-	elif broke:
-		controls = "NOT ENOUGH TOKENS    [ESC] DISCONNECT"
-	if _spin_button != null:
-		_spin_button.disabled = _spinning or out
-		_exit_button.disabled = _spinning
-		var locked := _spinning or out or free or broke
-		_minus_button.disabled = locked or _stake <= station.get_min_stake()
-		_plus_button.disabled = locked or _stake >= station.get_max_stake()
-		_min_button.disabled = locked or _stake <= station.get_min_stake()
-		_all_in_button.disabled = locked or _stake >= station.get_max_stake()
-		_stake_label.text = "FREE" if free else "%d TKN" % _stake
-		_stake_label.add_theme_color_override("font_color",
-			MachineDrawing.TEAL if free else (MachineDrawing.ORANGE if _stake >= GameState.tokens and _stake > station.get_min_stake() else Color.WHITE))
-	var stake_text := "FREE SPIN" if free else "MIN %d TKN" % station.get_min_stake()
-	_info_label.text = "%s  |  CYCLES %d  |  BALANCE %d TKN\n%s" % [
-		stake_text, station.spins_left, GameState.tokens, controls,
-	]
+	var locked := _busy() or out or free or broke
 
+	# Active tab yellow, the other steel; both dimmed while busy.
+	_style_button(_wheel_tab, MachineDrawing.YELLOW if mode == Mode.WHEEL else MachineDrawing.STEEL_LIGHT)
+	_style_button(_cards_tab, MachineDrawing.YELLOW if mode == Mode.CARDS else MachineDrawing.STEEL_LIGHT)
+	_wheel_tab.disabled = _busy()
+	_cards_tab.disabled = _busy()
+	_close_button.disabled = _busy()
+	_minus_button.disabled = locked or _stake <= station.get_min_stake()
+	_plus_button.disabled = locked or _stake >= station.get_max_stake()
+	_min_button.disabled = locked or _stake <= station.get_min_stake()
+	_all_in_button.disabled = locked or _stake >= station.get_max_stake()
 
-func _on_jarvis_say(text: String, _mood: String) -> void:
-	_jarvis_label.text = "> JARVIS: " + text
+	if mode == Mode.WHEEL:
+		_action_button.text = "SPIN"
+		_action_button.disabled = _spinning or out
+	elif round_on:
+		_action_button.text = "CASH OUT"
+		_action_button.disabled = _spinning or station.cards_streak <= 0
+	else:
+		_action_button.text = "DEAL"
+		_action_button.disabled = _spinning or out
+	_higher_button.disabled = _spinning or not round_on
+	_lower_button.disabled = _spinning or not round_on
+
+	var shown_stake := station.get_last_stake() if round_on else _stake
+	_stake_label.text = "FREE" if free and not round_on else "%d TKN" % shown_stake
+	var all_in := not free and shown_stake >= GameState.tokens and shown_stake > station.get_min_stake()
+	_stake_label.add_theme_color_override("font_color",
+		MachineDrawing.TEAL if free and not round_on else (MachineDrawing.ORANGE if all_in else Color.WHITE))
+	_spins_label.text = "%d SPIN%s LEFT" % [station.spins_left, "" if station.spins_left == 1 else "S"]
+
+	if round_on:
+		_pot_label.text = "POT %d TKN   NEXT x%.2f" % [station.get_cards_pot(), station.get_cards_step()]
+	else:
+		_pot_label.text = "EACH CORRECT GUESS x%.2f" % station.get_cards_step()
 
 
 func _on_tokens_changed(_tokens: int) -> void:
