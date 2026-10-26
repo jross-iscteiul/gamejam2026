@@ -11,6 +11,7 @@ const BLADE := preload("res://objects/hazards/blade.tscn")
 const GEYSER := preload("res://objects/hazards/geyser.tscn")
 const BOULDER := preload("res://objects/hazards/boulder.tscn")
 const GATE := preload("res://levels/shared/gate.tscn")
+const GRAB_HAND := preload("res://objects/hazards/grab_hand.tscn")
 const SPAWN := Vector2(100, -20)
 
 var player: CharacterBody2D
@@ -99,6 +100,9 @@ func _physics_process(_delta: float) -> void:
 			_place(Vector2(208, -20))
 		[0, 70]:
 			_check(hits == 2, "toxic: 2 hits in 1.0 s while standing in it (got %d)" % hits)
+			_check(health.max_health - health.current == 4.0, "toxic: 2 damage per hit (lost %d HP)" % (health.max_health - health.current))
+			var toxic := get_children().filter(func(n: Node) -> bool: return n.scene_file_path == TOXIC.resource_path)[0] as Node2D
+			_check(toxic.z_index > player.z_index, "toxic: drawn in front of the player")
 			_place(Vector2(600, -20))
 		[0, 75]: # overlaps update one physics step after a teleport
 			hits = 0
@@ -153,44 +157,64 @@ func _physics_process(_delta: float) -> void:
 			_check_hammer_handle()
 			_place(Vector2(600, -20))
 			_next()
-		[4, 1]: # lava: instant death, then respawn at the checkpoint with full health
+		[4, 1]: # grab hand: no warning, grabs on contact while rising, fist closes; dies 1.5 s later
+			_spawn(GRAB_HAND, Vector2(2300, 0))
+			player.respawn_point = SPAWN
+			_place(Vector2(2300, -20))
+		[4, 40]:
+			_check(player.held and not player.get_node("Body").visible, "grab hand: caught and hid the player")
+		[4, 80]:
+			_check(player.held and player.global_position.y > 0.0,
+				"grab hand: player still held, pulled underground (y=%.0f)" % player.global_position.y)
+		[4, 130]:
+			_check(not player.held and player.global_position.distance_to(SPAWN) < 40.0 and player.get_node("Body").visible,
+				"grab hand: player died and respawned at the checkpoint (at %s)" % player.global_position)
+		[4, 230]: # after the cooldown: jumping high over the pit's edge is no escape
+			_place(Vector2(2300 + 50, -200))
+		[4, 260]:
+			_check(player.held and not player.get_node("Body").visible,
+				"grab hand: caught a player high over the pit's edge (at %s)" % player.global_position)
+		[4, 360]:
+			_check(not player.held, "grab hand: second victim respawned")
+			_next()
+		[5, 1]: # lava: instant death, then respawn at the checkpoint with full health
 			_spawn(LAVA, Vector2(2560, -32), {"size": Vector2(96, 32)})
 			player.respawn_point = SPAWN
 			_place(Vector2(2608, -60))
 			died = false
-		[4, 90]:
+		[5, 90]:
 			_check(died, "lava: kills on touch")
 			_check(player.global_position.distance_to(SPAWN) < 40.0 and health.current == health.max_health,
 				"lava: respawned at checkpoint with full health (at %s, hp %.0f)" % [player.global_position, health.current])
 			_next()
-		[5, 1]: # geyser: idle 0.5 s -> warn 0.5 s (harmless) -> erupt 1.0 s (instant death up the column)
+		[6, 1]: # geyser: idle 0.5 s -> warn 0.5 s (harmless) -> erupt 1.0 s (instant death up the column)
 			_spawn(GEYSER, Vector2(3200, -32), {"idle_min": 0.5, "idle_max": 0.5, "warn_time": 0.5})
 			_place(Vector2(3216, -20))
 			died = false
-		[5, 50]:
+		[6, 50]:
 			_check(not died and hits == 0, "geyser: harmless while idle/warning")
-		[5, 80]:
+		[6, 80]:
 			_check(died, "geyser: eruption kills")
-		[5, 110]: # let the death fall play out and respawn the player before the next test
+		[6, 110]: # let the death fall play out and respawn the player before the next test
 			_next()
-		[6, 1]: # boulder: waits 0.5 s, eases to 200 px/s over 0.5 s, stops after 300 px
+		[7, 1]: # boulder: waits 0.5 s, eases to 200 px/s over 0.5 s, stops after 300 px
 			boulder = _spawn(BOULDER, Vector2(4000, -48), {"delay": 0.5, "speed": 200.0, "accel_time": 0.5, "distance": 300.0})
 			_check(boulder.offset_at(0.4) == 0.0 and is_equal_approx(boulder.offset_at(1.0), 50.0)
 				and is_equal_approx(boulder.offset_at(2.0), 250.0) and boulder.offset_at(10.0) == 300.0,
 				"boulder: wait, ease up, roll, stop at its distance")
 			_place(Vector2(4200, -20))
 			died = false
-		[6, 20]:
+		[7, 20]:
 			_check(boulder.position.x == 4000.0, "boulder: still waiting at the start")
-		[6, 105]:
+		[7, 105]:
 			_check(died, "boulder: crushes the player")
-		[6, 125]: # the player has respawned by now, which sends the ball back to the start
+		[7, 125]: # the player has respawned by now, which sends the ball back to the start
 			_check(boulder.position.x < 4010.0, "boulder: back at the start after the respawn (x=%.0f)" % boulder.position.x)
-		[6, 270]:
+		[7, 270]:
 			_check(boulder.position.x == 4300.0, "boulder: stops at the end of its run (x=%.0f)" % boulder.position.x)
 			boulder.gate = _spawn(GATE, Vector2(5000, -80), {"closed": true})
 			GameState.player_respawned.emit()
-		[6, 275]:
+		[7, 275]:
 			_check(boulder.position.x == 4300.0, "boulder: stays put on respawn once the gate is closed")
 			print("%d failures" % failures)
 			get_tree().quit(failures)

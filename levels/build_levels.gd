@@ -15,6 +15,8 @@ extends Node
 ##          B fixed spinning blade   S..s blade sliding between S and s (same row or column)
 ##          Y lava pool with a geyser erupting up to the ceiling at random intervals
 ##          X giant rolling ball (start centre of its 3x3 tiles); chases right and stops at the O gate
+##          U pit bottom like ~, with a grab hand in the pit: anyone over it is caught, up to the first
+##            solid tile above the pit (so a platform over it is a safe route)
 ## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
 ##            all levels play MUSIC on the Music bus; "trap_door": true turns the exit door (D)
 ##            into a trap (see levels/shared/door.gd `trap`).
@@ -143,9 +145,9 @@ const LEVELS := [
 			"#.......................................................####........................................G........#",
 			"#.......................................................####..........####..........................G........#",
 			"#..P................z...................................####S........s####..........................G....D...#",
-			"#####################...#######################WWWW###########WWWWW#################..........################",
-			"####################################################################################..........################",
-			"####################################################################################~~~~~~~~~~################",
+			"########################...####################WWWW###########WWWWW#################..........################",
+			"########################...#########################################################..........################",
+			"########################UUU#########################################################~~~~~~~~~~################",
 		],
 	},
 	{ # Level 4 - boss arena: outrun the rolling ball past two lava geysers, then the gate shuts and the camera locks.
@@ -183,6 +185,7 @@ var hammer_scene: PackedScene = load("res://objects/hazards/hammer.tscn")
 var blade_scene: PackedScene = load("res://objects/hazards/blade.tscn")
 var geyser_scene: PackedScene = load("res://objects/hazards/geyser.tscn")
 var boulder_scene: PackedScene = load("res://objects/hazards/boulder.tscn")
+var grab_hand_scene: PackedScene = load("res://objects/hazards/grab_hand.tscn")
 const MUSIC := "res://assets/audio/music/cyberpunk_street.ogg"
 
 
@@ -282,12 +285,14 @@ func _build_level(index: int, tileset: TileSet) -> void:
 					door.next_level = "res://levels/level_%02d/level_%02d.tscn" % [index + 2, index + 2]
 					door.trap = def.get("trap_door", false)
 				"C": _add(root, checkpoint_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
-				"~":
-					if map[y][x - 1] != "~": # one trigger per run of pit cells
+				"~", "U":
+					if map[y][x - 1] != ch: # one trigger per run of pit cells
 						_add_area(root, "Pit", "res://objects/hazards/pit.gd", Rect2i(x, y, _run(map, p), 1))
 						var glow = _add(root, lava_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
 						glow.size = Vector2(_run(map, p) * TILE, TILE)
 						glow.damaging = false # the Pit trigger handles it (instant reset, bypasses shields)
+						if ch == "U":
+							_add_grab_hand(root, map, p, difficulty)
 				"R", "W", "Y":
 					if map[y][x - 1] != ch: # one pool per run of cells
 						var pool = _add(root, (toxic_scene if ch == "W" else lava_scene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
@@ -403,6 +408,26 @@ func _run(map: Array, p: Vector2i) -> int:
 	while map[p.y][p.x + run] == map[p.y][p.x]:
 		run += 1
 	return run
+
+
+## Grab hand for the run of U cells starting at `p`: origin at the rim (top of the pit's walls),
+## catch height up to the lowest solid tile over the pit.
+func _add_grab_hand(root: Node, map: Array, p: Vector2i, difficulty: float) -> void:
+	var run := _run(map, p)
+	var rim := p.y
+	while map[rim - 1][p.x] == "." and map[rim - 1][p.x - 1] == "#":
+		rim -= 1
+	var open := 99
+	for x in range(p.x, p.x + run):
+		var up := 0
+		while map[rim - 1 - up][x] != "#":
+			up += 1
+		open = mini(open, up)
+	var hand = _add(root, grab_hand_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p.x * TILE + run * TILE / 2.0, rim * TILE))
+	hand.width = run * TILE
+	hand.depth = (p.y - rim) * TILE
+	hand.reach_up = open * TILE
+	hand.difficulty = difficulty
 
 
 ## Nearest end marker on the same row, else on the same column (lasers, sliding blades).
