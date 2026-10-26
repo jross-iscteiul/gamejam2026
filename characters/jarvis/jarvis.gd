@@ -64,6 +64,22 @@ extends Node2D
 @export var power_down_seconds: float = 1.2
 @export var power_up_seconds: float = 0.5
 
+@export_group("Assist")
+## JARVIS physically performs the abilities he sells: hovers over the player projecting the
+## shield, pushes the dash with his thruster, and projects a blue platform for the double jump.
+@export var shield_offset: Vector2 = Vector2(0.0, -40.0) # from the player, while shielded
+@export var assist_follow_speed: float = 25.0 # faster follow while getting into a pose
+@export var dash_push_offset: Vector2 = Vector2(-16.0, -2.0) # behind the player (x mirrored by dash direction)
+@export var dash_pose_extra_seconds: float = 0.12 # keeps the pose a moment after the dash ends
+## JARVIS's centre goes this far below the player's origin, so the platform he projects
+## (AssistFx.platform_offset above him) sits right under the player's feet.
+@export var boost_under_feet: float = 36.0
+## Shifts JARVIS and his platform toward the way the player faces, so it sits under the
+## character drawing (sprite and gun lean forward of the collision box).
+@export var boost_forward_shift: float = 6.0
+@export var boost_seconds: float = 0.45
+@export var boost_recoil: float = 6.0 # pushed down a little by the jump
+
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
 
@@ -78,6 +94,8 @@ signal ability_denied(ability: StringName) # not enough online % or JARVIS offli
 
 var player: Player
 var mood: String = "neutral"
+## Current assist pose: &"", &"dash", &"boost" or &"shield".
+var assist: StringName = &""
 ## 1 = powered, 0 = fully powered down; eases between the two (see Offline settings).
 var power: float = 1.0
 var facing: int = 1
@@ -91,9 +109,13 @@ var _boosted_this_air: bool = false
 var _low_trust_warned: bool = false
 var _idle_left: float = 0.0
 var _denied_cooldown_left: float = 0.0
+var _assist_left: float = 0.0
+var _assist_dir: int = 1
+var _boost_anchor := Vector2.ZERO
 
 @onready var body: Node2D = $Body
 @onready var bubble: SpeechBubble = $SpeechBubble
+@onready var assist_fx: Node2D = $AssistFx
 
 
 func _ready() -> void:
@@ -111,24 +133,90 @@ func _ready() -> void:
 	_find_player()
 	if player:
 		global_position = _target_position()
-	_on_enabled_changed(GameState.jarvis_enabled)
+	_apply_enabled_look(GameState.jarvis_enabled)
 
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(player) and not _find_player():
 		return
 	_tick_power(delta)
+	_tick_assist(delta)
 	var previous := global_position
-	var target := _target_position()
-	if global_position.distance_to(target) > snap_distance:
-		global_position = target
-	else:
-		global_position = global_position.lerp(target, 1.0 - exp(-follow_speed * delta))
+	_move(delta)
 	var speed_x := (global_position.x - previous.x) / delta if delta > 0.0 else 0.0
 	_animate_body(delta, speed_x)
+	_pose_body()
 	_shoot(delta)
 	_tick_talk(delta)
 	_update_mood()
+
+
+func _move(delta: float) -> void:
+	match assist:
+		&"dash": # glued behind the player for the whole push
+			global_position = player.global_position + Vector2(dash_push_offset.x * _assist_dir, dash_push_offset.y)
+			return
+		&"boost": # stays where the player kicked off, nudged down by the jump
+			var t := 1.0 - _assist_left / boost_seconds
+			global_position = _boost_anchor + Vector2(0.0, boost_recoil * sin(t * PI))
+			return
+	var target := _target_position()
+	var speed := follow_speed
+	if assist == &"shield":
+		target = player.global_position + shield_offset
+		speed = assist_follow_speed
+	if global_position.distance_to(target) > snap_distance:
+		global_position = target
+	else:
+		global_position = global_position.lerp(target, 1.0 - exp(-speed * delta))
+
+
+## Starts a timed assist pose (dash or boost); the shield pose follows player.shielded.
+func start_assist(kind: StringName, direction: int = 1) -> void:
+	assist = kind
+	_assist_dir = 1 if direction >= 0 else -1
+	match kind:
+		&"dash":
+			_assist_left = player.dash_duration + dash_pose_extra_seconds
+			global_position = player.global_position + Vector2(dash_push_offset.x * _assist_dir, dash_push_offset.y)
+		&"boost":
+			_assist_left = boost_seconds
+			_boost_anchor = player.global_position + Vector2(boost_forward_shift * player.facing, boost_under_feet)
+			global_position = _boost_anchor
+	assist_fx.start(kind, _assist_dir)
+
+
+func _tick_assist(delta: float) -> void:
+	if assist == &"dash" or assist == &"boost":
+		_assist_left -= delta
+		if _assist_left > 0.0:
+			return
+		assist = &""
+	var shielding := player.shielded and GameState.jarvis_enabled
+	if shielding and assist != &"shield":
+		assist = &"shield"
+		assist_fx.start(&"shield", facing)
+	elif not shielding and assist == &"shield":
+		assist = &""
+	if assist == &"" and assist_fx.kind != &"boost": # the platform lingers on its own timer
+		assist_fx.stop()
+
+
+## Assist poses override the bob/tilt from _animate_body.
+func _pose_body() -> void:
+	match assist:
+		&"dash": # sideways, thruster pointing back at the player's back
+			body.scale.x = _assist_dir
+			body.rotation = deg_to_rad(90.0) * _assist_dir # rotates the bottom nozzle to face backwards
+			body.position.y = 0.0
+		&"boost": # level and steady under the platform he projects
+			body.rotation = 0.0
+			body.position.y = 0.0
+		&"shield": # level, steady, projecting down
+			body.rotation = lerp_angle(body.rotation, 0.0, 0.3)
+			body.scale = Vector2(facing, 1.0)
+		_:
+			body.scale.y = 1.0
 
 
 ## Resting mood from the online bar (or "offline" while disabled).
@@ -227,6 +315,7 @@ func _handle_dash_input() -> void:
 				_last_tap_time_msec = now
 	if direction != 0 and player.can_dash() and _buy(&"dash"):
 		player.dash(Vector2(direction, 0.0))
+		start_assist(&"dash", direction)
 
 
 ## The double jump: a jump press in the air with no jumps left buys one (once per airtime);
@@ -239,6 +328,7 @@ func _handle_boost_jump_input() -> void:
 	if _buy(&"boost_jump"):
 		_boosted_this_air = true
 		player.boost_jump()
+		start_assist(&"boost", facing)
 
 
 ## Held shield is paid up front for each shield_bill_interval. A failed payment drops it until
@@ -348,11 +438,13 @@ func _target_position() -> Vector2:
 	return player.global_position + Vector2(follow_offset.x * facing, follow_offset.y + sink)
 
 
-func _on_enabled_changed(enabled: bool) -> void:
+func _apply_enabled_look(enabled: bool) -> void:
 	body.modulate = Color.WHITE if enabled else disabled_color
-	body.queue_redraw()
-	if not is_node_ready():
-		return
+
+
+## Only real changes speak; spawning (see _ready) applies the look silently.
+func _on_enabled_changed(enabled: bool) -> void:
+	_apply_enabled_look(enabled)
 	if enabled:
 		say_line("back_online", "happy")
 	elif not GameState.jarvis_hostile:
