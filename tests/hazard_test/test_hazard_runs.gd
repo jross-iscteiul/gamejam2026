@@ -59,7 +59,7 @@ func _physics_process(_delta: float) -> void:
 	var p: CharacterBody2D = s.get_node("Player")
 	var delay: int = k[7][d_i]
 	if t == 2:
-		GameState.trust = GameState.MAX_TRUST # the double jump is paid with JARVIS's online %
+		GameState.energy = GameState.MAX_ENERGY # the double jump is paid with JARVIS's energy
 		s.get_node("Entities").queue_free()
 		p.global_position = Vector2(k[2] * T) + Vector2(16, 16)
 		p.velocity = Vector2.ZERO

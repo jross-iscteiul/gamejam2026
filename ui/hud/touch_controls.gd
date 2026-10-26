@@ -4,7 +4,7 @@ extends Control
 ## Reuses the agreed InputMap actions and a small Player aim/fire adapter.
 
 const BUTTONS := [&"move_left", &"move_right", &"jump", &"dash", &"interact"]
-const LABELS := {&"move_left": "<", &"move_right": ">", &"jump": "JUMP", &"dash": "DASH", &"interact": "USE"}
+const LABELS := {&"move_left": "<", &"move_right": ">", &"jump": "JUMP", &"dash": "DASH", &"interact": "USE", &"shield": "USE",}
 var _fingers: Dictionary = {}
 var _held: Dictionary = {}
 var _aim_finger: int = -1

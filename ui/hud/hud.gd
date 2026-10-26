@@ -9,7 +9,7 @@ var _timer: Label
 var _sector: Label
 var _leaderboard_page: VBoxContainer
 var _status: Label
-var _trust: ProgressBar
+var _energy: ProgressBar
 var _feed: Button
 var _boss_box: VBoxContainer
 var _boss: ProgressBar
@@ -42,8 +42,8 @@ func _ready() -> void:
 	_layout_bottom_bars()
 	_build_pause()
 	GameState.tokens_changed.connect(_update_tokens)
-	GameState.trust_changed.connect(_update_trust)
-	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_trust(GameState.trust))
+	GameState.energy_changed.connect(_update_energy)
+	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_energy(GameState.energy))
 	GameState.boss_health_changed.connect(_update_boss)
 	GameState.boss_defeated.connect(_boss_defeated)
 	GameState.jarvis_say.connect(_say)
@@ -56,7 +56,7 @@ func _ready() -> void:
 			health.changed.connect(_update_health)
 			_update_health(health.current, health.max_health)
 	_update_tokens(GameState.tokens)
-	_update_trust(GameState.trust)
+	_update_energy(GameState.energy)
 
 
 func _build_hud() -> void:
@@ -83,23 +83,23 @@ func _build_hud() -> void:
 	_timer.tooltip_text = "Run time: pause stops the clock; deaths keep counting."
 	info.add_child(_timer)
 	row.add_child(info)
-	var trust_box := VBoxContainer.new()
-	trust_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	trust_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status = GameUI.label("JARVIS / ONLINE", 16, GameUI.CYAN)
-	trust_box.add_child(_status)
-	_trust = ProgressBar.new()
-	_trust.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_trust.custom_minimum_size = Vector2(300, 28)
-	_trust.show_percentage = false
-	trust_box.add_child(_trust)
-	row.add_child(trust_box)
+	var energy_box := VBoxContainer.new()
+	energy_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	energy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status = GameUI.label("JARVIS / ENERGY", 16, GameUI.CYAN)
+	energy_box.add_child(_status)
+	_energy = ProgressBar.new()
+	_energy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_energy.custom_minimum_size = Vector2(300, 28)
+	_energy.show_percentage = false
+	energy_box.add_child(_energy)
+	row.add_child(energy_box)
 	_tokens = GameUI.label("TOKENS 000", 24, GameUI.GOLD)
 	_tokens.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_tokens.custom_minimum_size.x = 264
 	row.add_child(_tokens)
 	_feed = GameUI.button("FEED / 3", _feed_jarvis)
-	_feed.tooltip_text = "Spend 3 tokens to restore 25 trust. JARVIS stops helping at zero trust."
+	_feed.tooltip_text = "Spend 3 tokens to compact JARVIS's context: +25% energy. JARVIS shuts down at zero energy."
 	row.add_child(_feed)
 	var pause := GameUI.button("II", func() -> void: set_paused(true))
 	pause.tooltip_text = "Pause (Esc / P)"
@@ -222,22 +222,23 @@ func _update_tokens(value: int) -> void:
 	_update_feed()
 
 
-func _update_trust(value: float) -> void:
-	_trust.value = value
-	var state := "OFFLINE" if not GameState.jarvis_enabled else "ONLINE"
+func _update_energy(value: float) -> void:
+	_energy.value = value
+	var state := "ENERGY" if GameState.jarvis_enabled else "OFFLINE"
 	_status.text = "JARVIS / %s / %d%%" % [state, ceili(value)]
 	_status.add_theme_color_override("font_color", GameUI.RED if value <= 20 else GameUI.CYAN)
 	_update_feed()
 
 
 func _update_feed() -> void:
-	_feed.disabled = GameState.tokens < GameState.FEED_COST or GameState.trust >= GameState.MAX_TRUST or GameState.jarvis_hostile
+	_feed.disabled = GameState.tokens < GameState.FEED_COST or GameState.energy >= GameState.MAX_ENERGY or GameState.jarvis_hostile
 
 
 func _feed_jarvis() -> void:
 	if GameState.feed_jarvis():
 		GameUI.play_sound(self, _click)
-		notify("JARVIS +25 TRUST")
+		# Feeding tokens compacts JARVIS's context, freeing energy.
+		notify("+%d%% COMPACTION" % roundi(GameState.FEED_ENERGY))
 
 
 func _update_health(value: float, maximum: float) -> void:

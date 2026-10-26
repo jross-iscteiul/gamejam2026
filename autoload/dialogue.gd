@@ -7,12 +7,12 @@ var _lines := {
 	"kill_doubt": ["Was that you? I think that was me."],
 	"death": ["Gravity: 1, You: 0."],
 	"gambling": ["The house always wins. I am the house."],
-	"low_trust": ["Feed me tokens and maybe I'll care."],
+	"low_energy": ["Running on fumes. Feed me tokens.", "Context window nearly full. Compact me."],
 	# Package 2 (JARVIS speech bubble) categories; placeholder lines.
 	"idle": ["Still here. Still judging.", "I could do this faster.", "Nice weather for a jump."],
-	"ability_denied": ["Not on my budget.", "Trust first, tricks later.", "That costs more than you've got."],
-	"offline": ["Battery... of trust... empty..."],
-	"back_online": ["Back online. Don't make it weird."],
+	"ability_denied": ["Not on my budget.", "Energy first, tricks later.", "That costs more energy than I've got."],
+	"offline": ["Energy... depleted... shutting... down..."],
+	"back_online": ["Context compacted. Back online.", "Back online. Don't make it weird."],
 }
 
 

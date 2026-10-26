@@ -10,7 +10,7 @@ var _boss_demo: bool = false
 
 func _ready() -> void:
 	GameState.reset_run()
-	var instructions := GameUI.label("PACKAGE 3 TEST\nT +10 TOKENS / F FEED / Y ZERO TRUST / K DAMAGE\nRIGHT CLICK SHIELD (2/s) / B JUMP BOOST (3) / G BOSS BAR", 16)
+	var instructions := GameUI.label("PACKAGE 3 TEST\nT +10 TOKENS / F FEED / Y ZERO ENERGY / K DAMAGE\nRIGHT CLICK SHIELD (2/s) / B JUMP BOOST (3) / G BOSS BAR", 16)
 	instructions.theme = GameUI.theme()
 	instructions.position = Vector2(48, 930)
 	instructions.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -26,7 +26,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_T: GameState.add_tokens(10)
 		KEY_F: GameState.feed_jarvis()
-		KEY_Y: GameState.trust = 0
+		KEY_Y: GameState.energy = 0
 		KEY_K: _player.take_damage(1, self)
 		KEY_B:
 			if GameState.use_ability(&"boost_jump"):
