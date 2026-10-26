@@ -32,6 +32,14 @@ func _test_god_mode() -> void:
 	GameState.set_god_mode(true)
 	GameState.reset_run()
 	_check(not GameState.god_mode and GameState.tokens == 0, "reset turns god mode off")
+	# Intro mode: infinite energy only; tokens stay real and god mode can't be turned on.
+	GameState.tokens = 4
+	GameState.infinite_energy = true
+	GameState.add_energy(-60)
+	_check(GameState.energy == GameState.MAX_ENERGY and GameState.spend_tokens(3) and GameState.tokens == 1, "infinite energy keeps tokens real")
+	_check(not GameState.toggle_god_mode() and not GameState.god_mode, "god mode is unavailable while energy is infinite (intro)")
+	GameState.reset_run()
+	_check(not GameState.infinite_energy, "reset clears infinite energy")
 
 
 func _check(condition: bool, message: String) -> void:

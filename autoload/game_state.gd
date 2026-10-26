@@ -36,6 +36,12 @@ const GOD_TOKENS: int = 999
 ## Practice-only cheat (G): energy locked at max and tokens never run out. Never on in a
 ## leaderboard-eligible run; reset_run() / prepare_full_run() turn it off.
 var god_mode: bool = false
+## Energy held at max without touching tokens (the intro). Cleared by reset_run().
+var infinite_energy: bool = false:
+	set(value):
+		infinite_energy = value
+		if value:
+			energy = MAX_ENERGY
 var _tokens_outside_god_mode: int = 0
 
 var tokens: int = 0:
@@ -46,7 +52,7 @@ var tokens: int = 0:
 var energy: float = MAX_ENERGY:
 	set(value):
 		var was_enabled := jarvis_enabled
-		energy = MAX_ENERGY if god_mode else clampf(value, 0.0, MAX_ENERGY)
+		energy = MAX_ENERGY if god_mode or infinite_energy else clampf(value, 0.0, MAX_ENERGY)
 		energy_changed.emit(energy)
 		if was_enabled != jarvis_enabled:
 			jarvis_enabled_changed.emit(jarvis_enabled)
@@ -88,6 +94,7 @@ func _process(delta: float) -> void:
 
 func reset_run() -> void:
 	set_god_mode(false)
+	infinite_energy = false
 	leaderboard.abandon_run()
 	run_clock.reset()
 	gameplay_active = false
@@ -120,7 +127,7 @@ func _on_boss_defeated() -> void:
 
 ## Practice only: refuses (returns false) to turn on during a leaderboard-eligible run.
 func toggle_god_mode() -> bool:
-	if not god_mode and run_clock.eligible:
+	if not god_mode and (run_clock.eligible or infinite_energy):
 		return false
 	set_god_mode(not god_mode)
 	return true

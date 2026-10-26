@@ -2,7 +2,8 @@ extends "res://levels/shared/level.gd"
 ## Playable intro: a pixel-font story crawl scrolls behind the level while the player walks a flat
 ## floor over the pixelized intro art, past a few tokens, up to JARVIS lying powered down.
 ## Reaching him plays a tap-through wake-up dialogue; afterwards the door leads to level 1.
-## Esc / P skips straight to level 1.
+## Esc / P skips straight to level 1. Energy is infinite here (tokens stay real, so the free
+## tokens still power JARVIS up); god mode is not available.
 
 signal advanced
 
@@ -59,6 +60,7 @@ var _player_bubble := SpeechBubble.new()
 
 
 func _ready() -> void:
+	GameState.infinite_energy = true
 	_paint_floor()
 	super()
 	lock_camera(Rect2(0, 0, (floor_origin.x + floor_size.x) * TILE, (floor_origin.y + floor_size.y) * TILE))
@@ -165,6 +167,10 @@ func _say(bubble: SpeechBubble, text: String, mood: String = "neutral") -> void:
 	_waiting = true
 	await advanced
 	_waiting = false
+
+
+func _exit_tree() -> void:
+	GameState.infinite_energy = false
 
 
 func _go_to_first_level() -> void:
