@@ -10,7 +10,7 @@ extends CanvasLayer
 ##   a tie loses everything.
 ##
 ## Keys: [A]/[D] stake, [W] all-in, [S] minimum, [E]/[Space] spin / deal / cash
-## out, [W]/[S] higher/lower during a card round, [Tab] switch game, [Esc] close.
+## out, [D]/[W] higher and [A]/[S] lower during a card round, [Tab] switch game, [Esc] close.
 ##
 ## Pauses the game. Drawn under the HUD (layer 15 < HUD 20) and sized to fit
 ## between the HUD's bars, so tokens, energy and health stay visible.
@@ -52,6 +52,8 @@ var _spins_label: Label
 var _pot_label: Label
 ## Chosen stake for the next paid spin / deal.
 var _stake := 0
+var _tick_player: AudioStreamPlayer
+var _last_tick_slice := 0
 ## Order matters: OVERCLOCK sits next to NULL (fake jackpot nudge).
 var _slices: Array = [
 	{"outcome": GamblingOdds.Outcome.JACKPOT, "label": "OVERCLOCK", "color": Color("e8b01c")},
@@ -89,6 +91,14 @@ func _ready() -> void:
 	_set_touch_paused(true)
 	_keep_music_playing(true)
 	get_tree().paused = true
+	_tick_player = AudioStreamPlayer.new()
+	_tick_player.bus = &"SFX"
+	_tick_player.stream = _make_tick()
+	_tick_player.max_polyphony = 4
+	add_child(_tick_player)
+	# A machine with a free spin spins on its own as soon as it opens.
+	if station != null and station.is_next_spin_free() and station.spins_left > 0:
+		_spin.call_deferred()
 
 
 ## Tappable/clickable controls, so it works with keyboard, mouse and touch.
@@ -109,8 +119,8 @@ func _build_buttons() -> void:
 	_spins_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_action_button = _make_button("SPIN", Rect2(536, 236, 96, 40), MachineDrawing.YELLOW, _on_action_pressed)
 
-	_higher_button = _make_button("HIGHER", Rect2(206, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(true))
-	_lower_button = _make_button("LOWER", Rect2(330, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(false))
+	_lower_button = _make_button("LOWER", Rect2(206, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(false))
+	_higher_button = _make_button("HIGHER", Rect2(330, 214, 104, 24), MachineDrawing.TEAL, _guess.bind(true))
 	_pot_label = _make_label("", Rect2(140, 244, 360, 16), MachineDrawing.YELLOW)
 	_pot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_stake = station.get_min_stake() if station != null else 0
@@ -212,6 +222,7 @@ func _set_stake_all_in() -> void:
 ## The HUD's pause menu can unpause the tree while the machine is open
 ## (RESUME). Keep the game paused until the machine itself closes.
 func _process(_delta: float) -> void:
+	_tick_on_slice_change()
 	if not get_tree().paused and not is_queued_for_deletion():
 		get_tree().paused = true
 		_set_touch_paused(true)
@@ -284,9 +295,9 @@ func _input(event: InputEvent) -> void:
 	var round_on := station != null and station.cards_active
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_TAB:
 		_set_mode(Mode.CARDS if mode == Mode.WHEEL else Mode.WHEEL)
-	elif round_on and event.is_action_pressed("move_up"):
+	elif round_on and (event.is_action_pressed("move_up") or event.is_action_pressed("move_right")):
 		_guess(true)
-	elif round_on and event.is_action_pressed("move_down"):
+	elif round_on and (event.is_action_pressed("move_down") or event.is_action_pressed("move_left")):
 		_guess(false)
 	elif event.is_action_pressed("move_left"):
 		_change_stake(-1)
@@ -495,6 +506,34 @@ func _flip_in() -> void:
 	var tween := create_tween()
 	tween.tween_property(_cards, "flip", 1.0, 0.25)
 	await tween.finished
+
+
+## Short metallic click each time a slice passes the pointer.
+func _tick_on_slice_change() -> void:
+	if _wheel == null or not _wheel.visible:
+		return
+	var slice := floori((-_wheel.rotation - PI / 2.0) / _wheel.get_step() + 0.5)
+	if slice != _last_tick_slice:
+		_last_tick_slice = slice
+		if _spinning and _tick_player != null:
+			_tick_player.pitch_scale = randf_range(0.95, 1.08)
+			_tick_player.play()
+
+
+static func _make_tick() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	var count := 660 # 30 ms
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	for i in count:
+		var t := float(i) / stream.mix_rate
+		var env := pow(1.0 - float(i) / count, 4.0)
+		var sample := (sin(TAU * 2200.0 * t) * 0.6 + randf_range(-1.0, 1.0) * 0.4) * env * 0.35
+		data.encode_s16(i * 2, int(sample * 32767.0))
+	stream.data = data
+	return stream
 
 
 # --- Shared ---------------------------------------------------------------------
