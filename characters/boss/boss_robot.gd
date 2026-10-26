@@ -8,7 +8,7 @@ const SKIN: PlayerSkin = preload("res://characters/player/robot.tres")
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const GRAVITY := 980.0
 
-@export var max_health: float = 10.0
+@export var max_health: float = 30.0
 ## Fraction of max health at which the robot stops fighting and JARVIS takes over.
 @export_range(0.0, 1.0) var final_phase_at: float = 0.4
 ## Lifted off the spawn marker so the scaled-up feet rest on the arena floor.

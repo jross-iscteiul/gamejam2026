@@ -9,13 +9,5 @@
 script = ExtResource("1_roast")
 
 [node name="GamblingStation" parent="." instance=ExtResource("2_station")]
-position = Vector2(1680, 416)
-free_spins = 1
-
-[node name="GamblingStation2" parent="." instance=ExtResource("2_station")]
 position = Vector2(2000, 512)
-free_spins = 1
-
-[node name="GamblingStation3" parent="." instance=ExtResource("2_station")]
-position = Vector2(2832, 512)
 free_spins = 1

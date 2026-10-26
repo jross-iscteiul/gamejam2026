@@ -13,9 +13,5 @@ position = Vector2(1392, 288)
 free_spins = 1
 
 [node name="GamblingStation2" parent="." instance=ExtResource("2_station")]
-position = Vector2(2256, 288)
-free_spins = 1
-
-[node name="GamblingStation3" parent="." instance=ExtResource("2_station")]
 position = Vector2(2544, 672)
 free_spins = 1

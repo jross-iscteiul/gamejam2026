@@ -16,9 +16,15 @@ enum Outcome {
 	JARVIS_RAISE,
 	RESPIN_TROLL,
 	FAKE_JACKPOT,
+	HEAL,
+	TOKEN_MULTIPLIER,
+	GOD_MODE,
 }
 
-const WINS: Array[int] = [Outcome.JACKPOT, Outcome.DOUBLE, Outcome.ENERGY_BOOST]
+const WINS: Array[int] = [
+	Outcome.JACKPOT, Outcome.DOUBLE, Outcome.ENERGY_BOOST,
+	Outcome.HEAL, Outcome.TOKEN_MULTIPLIER, Outcome.GOD_MODE,
+]
 
 ## Chance of a good outcome per level.
 @export var good_chance: Array[float] = [0.55, 0.55, 0.45, 0.35, 0.25]
@@ -29,7 +35,11 @@ const WINS: Array[int] = [Outcome.JACKPOT, Outcome.DOUBLE, Outcome.ENERGY_BOOST]
 	Outcome.JACKPOT: 1.0,
 	Outcome.DOUBLE: 3.0,
 	Outcome.ENERGY_BOOST: 2.0,
+	Outcome.HEAL: 2.0,
+	Outcome.TOKEN_MULTIPLIER: 1.5,
 }
+## Chance of GOD MODE on any spin, checked before everything else (1%).
+@export_range(0.0, 1.0) var god_mode_chance: float = 0.01
 ## Relative weights inside the troll bucket.
 @export var troll_weights: Dictionary = {
 	Outcome.NOTHING: 4.0,
@@ -54,6 +64,8 @@ func roll(level: int, loss_streak: int, rng: RandomNumberGenerator) -> int:
 	var pity := loss_streak >= pity_after_losses
 	var good := _at(good_chance, level)
 	var neutral := _at(neutral_chance, level)
+	if rng.randf() < god_mode_chance:
+		return Outcome.GOD_MODE
 	var r := rng.randf()
 
 	var outcome: int

@@ -167,7 +167,7 @@ func _build_walker() -> void:
 	_walker = CharacterBody2D.new()
 	_walker.name = "JarvisMechWalker"
 	_walker.collision_layer = 0
-	_walker.collision_mask = 1 # world only: he walks on the same islands as the player
+	_walker.collision_mask = 1 | 128 # world and the one-way platforms, same as the player
 	_walker.floor_snap_length = 6.0
 	var collider := CollisionShape2D.new()
 	var box := RectangleShape2D.new()
@@ -408,7 +408,7 @@ func _arm_pod(unit: Node2D) -> void:
 	unit.add_child(hurtbox)
 	health.damaged.connect(func(_amount: float, _source: Node) -> void:
 		unit.modulate = Color(2.0, 2.0, 2.0)
-		unit.create_tween().tween_property(unit, "modulate", _jarvis.hostile_color, 0.15))
+		unit.create_tween().tween_property(unit, "modulate", Color.WHITE, 0.15))
 	health.died.connect(_pop_pod.bind(unit, hurtbox))
 	_pods.append(unit)
 	_pod_boxes.append(hurtbox)
