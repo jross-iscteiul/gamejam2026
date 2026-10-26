@@ -31,8 +31,8 @@ func _step(_d: float) -> bool:
 	wait = 0
 	var s := get_tree().current_scene
 	match step:
-		0: _check(s.name == "Intro", "intro loads"); _press("pause")
-		1: _check(s.scene_file_path.ends_with("level_01.tscn"), "Esc skips intro -> level 1"); _goto("Door")
+		0: _check(s.name == "Intro", "intro loads"); _check(GameState.infinite_energy and not GameState.god_mode, "intro has infinite energy, no god mode"); _press("pause")
+		1: _check(s.scene_file_path.ends_with("level_01.tscn"), "Esc skips intro -> level 1"); _check(not GameState.infinite_energy, "infinite energy ends with the intro"); _goto("Door")
 		2: _press("interact")
 		3: _check(s.scene_file_path.ends_with("level_02.tscn"), "L1 door -> level 2"); _goto("Door")
 		4: _press("interact")
