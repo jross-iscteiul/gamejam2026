@@ -7,6 +7,7 @@ extends CharacterBody2D
 const SKIN: PlayerSkin = preload("res://characters/player/robot.tres")
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const GRAVITY := 980.0
+const Explosion := preload("res://characters/boss/pixel_explosion.gd")
 
 @export var max_health: float = 30.0
 ## Fraction of max health at which the robot stops fighting and JARVIS takes over.
@@ -40,6 +41,7 @@ var _facing: int = -1
 var _attack_left: float = 1.5
 var _volleys: int = 0
 var _slamming: bool = false
+var _exploded: bool = false
 var _rng := RandomNumberGenerator.new()
 @onready var _health: Health = $Health
 @onready var _sprite: AnimatedSprite2D = $Sprite
@@ -84,7 +86,7 @@ func _activate(body: Node2D) -> void:
 	modulate.a = 1.0
 	_health_changed(_health.current, _health.max_health)
 	GameState.boss_label_changed.emit("FOREMAN UNIT")
-	get_tree().call_group("minion_door", "set_active", true)
+	get_tree().call_group("minion_spawner", "set_active", true)
 
 
 ## Holds his preferred range: closes in when the player runs, backs off when crowded.
@@ -195,35 +197,40 @@ func _enter_final_phase() -> void:
 	jarvis.betray(global_position + handover_anchor)
 
 
-## He topples over and lies dead on the floor while the contract moves over to JARVIS. His body
-## leaves the enemy layer, so the wreck is scenery: shots fly straight through it.
+## The chassis flashes and explodes where it was defeated. Keep the controller alive for
+## JARVIS's victory signal, without a falling corpse or a remaining contact hitbox.
 func _power_down() -> void:
+	if _exploded:
+		return
+	_exploded = true
+	# Clear the Foreman's crew and hold every reinforcement route during the handover.
+	# JARVIS's boss controller restarts the ceiling drops once his assembly is complete.
+	get_tree().call_group("minion_spawner", "set_active", false)
+	for projectile in get_tree().get_nodes_in_group("enemy_projectile"):
+		projectile.queue_free()
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if enemy != self and not enemy.is_in_group("boss") and not enemy.is_in_group("jarvis") \
+				and enemy.has_method("explode"):
+			enemy.explode()
 	collision_layer = 0
-	_sprite.play(&"idle")
-	_sprite.speed_scale = 0.0
-	var rest := _sprite.position
-	var tween := create_tween().set_parallel()
-	tween.tween_property(_sprite, "modulate", Color(0.35, 0.33, 0.42, 1.0), 0.8)
-	# Fall around his feet (the node origin): the sprite's offset turns with the rotation.
-	tween.tween_method(func(angle: float) -> void:
-		_sprite.rotation = angle
-		_sprite.position = rest.rotated(angle), 0.0, deg_to_rad(-90.0 * _facing), 0.8) \
-		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	await tween.finished
+	velocity = Vector2.ZERO
+	set_physics_process(false)
+	_disable_areas()
+	_sprite.pause()
+	_sprite.modulate = Color(3, 3, 3)
+	await get_tree().create_timer(0.12).timeout
+	var blast := Explosion.new()
+	blast.radius = 38.0
+	get_tree().current_scene.add_child(blast)
+	blast.global_position = global_position + Vector2(0, -24)
+	_sprite.hide()
 	_shake_camera()
 
 
-## Called when the whole network goes dark (JARVIS shot down), so he collapses with his minions.
+## Called when the whole network goes dark (JARVIS shot down).
 func shut_down() -> void:
 	_final_phase = true
-	_disable_areas()
-	_sprite.speed_scale = 0.0
-	if collision_layer == 0:
-		return # already lying dead on the floor since the handover
-	var tween := create_tween().set_parallel()
-	tween.tween_property(_sprite, "modulate", Color(0.2, 0.2, 0.25, 0.0), 1.0)
-	tween.tween_property(_sprite, "rotation", deg_to_rad(80.0 * _facing), 1.0) \
-		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	_power_down()
 
 
 ## A downed unit must be harmless to walk over: the contact hitbox has to stop being monitorable
@@ -249,6 +256,8 @@ func _shake_camera() -> void:
 func _die(_source: Node) -> void:
 	if not _active or _defeated or _final_phase:
 		return # in the last phase only JARVIS can end the fight
+	_final_phase = true
+	await _power_down()
 	_finish()
 
 
@@ -257,7 +266,7 @@ func _finish() -> void:
 		return
 	_defeated = true
 	_trigger.get_node("Banner").hide()
-	get_tree().call_group("minion_door", "shut_down")
+	get_tree().call_group("minion_spawner", "shut_down")
 	hide()
 	GameState.boss_defeated.emit()
 	queue_free()

@@ -154,16 +154,23 @@ const LEVELS := [
 		# into the corridor, then it's outrun the rolling ball past two lava geysers to the gate.
 		"fg": 2, "sky": Color(0.24, 0.18, 0.35), "difficulty": 1.0,
 		"background": "city_skyline", "background_tint": Color(0.55, 0.45, 0.75),
+		"one_way_platforms": [
+			["PlatformLeft", Vector2(976, 272), 3],
+			["PlatformRight", Vector2(1392, 272), 3],
+			["PlatformTop", Vector2(1184, 192), 3],
+			["PlatformUpperLeft", Vector2(992, 176), 4],
+			["PlatformUpperRight", Vector2(1376, 176), 4],
+		],
 		"map": [
 			"####.P.#########################################",
 			"####...####################....................#",
 			"####...####################....................#",
 			"####...####################....................#",
 			"####...####################....................#",
-			"####...####################..####........####..#",
+			"####...####################....................#",
 			"####...####################....................#",
 			"#.........................#....................#",
-			"#.........................O......######........#",
+			"#.........................O....................#",
 			"#.X.......................O....................#",
 			"#.........................O...T...........K....#",
 			"############Y#######Y###########################",
@@ -355,6 +362,11 @@ func _build_level(index: int, tileset: TileSet) -> void:
 		_add_area(root, "CameraZone", "res://levels/shared/camera_zone.gd", rect)
 
 	_paint(fg, solid, def.fg)
+	for entry: Array in def.get("one_way_platforms", []):
+		var platform: Node2D = load("res://objects/platforms/one_way_platform.tscn").instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+		platform.name = entry[0]
+		platform.tiles_wide = entry[2]
+		_add(root, platform, entry[1])
 
 	# Player last so it draws in front of doors/levers.
 	root.move_child(nodes.player, -1)

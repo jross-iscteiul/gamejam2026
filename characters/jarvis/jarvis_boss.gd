@@ -8,6 +8,7 @@ extends Node
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const Fireball := preload("res://characters/jarvis/fireball.gd")
 const Missile := preload("res://characters/jarvis/missile.gd")
+const Explosion := preload("res://characters/boss/pixel_explosion.gd")
 
 @export var max_health: float = 12.0
 ## Armoured: it is three machines in one, so player shots land at this fraction of their damage.
@@ -99,6 +100,7 @@ var _shield_fx: Node2D
 
 func _ready() -> void:
 	_jarvis = get_parent() as Jarvis
+	_jarvis._clear_assists()
 	_rng.randomize()
 	_jarvis.add_to_group("enemy")
 	_previous_position = _jarvis.global_position
@@ -111,6 +113,7 @@ func _ready() -> void:
 		_raise_shield()
 	GameState.boss_label_changed.emit("JARVIS")
 	_health.changed.emit(_health.current, _health.max_health)
+	get_tree().call_group("minion_spawner", "set_active", true)
 
 
 ## Hurtbox so the player can shoot him down, contact hitbox so ramming hurts (enemy layers).
@@ -412,6 +415,7 @@ func _arm_pod(unit: Node2D) -> void:
 	health.died.connect(_pop_pod.bind(unit, hurtbox))
 	_pods.append(unit)
 	_pod_boxes.append(hurtbox)
+	_jarvis.mech.set_generator_active(unit, true)
 
 
 func _pop_pod(_killer: Node, unit: Node2D, hurtbox: PodHurtbox) -> void:
@@ -420,6 +424,7 @@ func _pop_pod(_killer: Node, unit: Node2D, hurtbox: PodHurtbox) -> void:
 	_pods.erase(unit)
 	_pod_boxes.erase(hurtbox)
 	_jarvis.assembled_units.erase(unit)
+	_jarvis.mech.set_generator_active(unit, false)
 	_disable_area(hurtbox)
 	var tween := unit.create_tween().set_parallel()
 	tween.tween_property(unit, "scale", unit.scale * 1.8, 0.25)
@@ -480,11 +485,37 @@ func _build_shield_fx() -> void:
 	_shield_fx = Node2D.new()
 	_shield_fx.name = "ShieldFx"
 	_jarvis.mech.add_child(_shield_fx)
-	_shield_fx.draw.connect(func() -> void:
-		var centre := Vector2(0.0, -4.0)
-		var pulse := 0.5 + 0.5 * sin(_time * 5.0)
-		_shield_fx.draw_circle(centre, shield_radius, Color(shield_color, 0.08 + 0.05 * pulse))
-		_shield_fx.draw_arc(centre, shield_radius, 0.0, TAU, 48, Color(shield_color, 0.5 + 0.3 * pulse), 2.0))
+	_shield_fx.draw.connect(_draw_shield)
+
+
+## A stepped hologram with scan lines and three status lights, matching the hard-edged
+## pixel armour. This is visual only; the generators still control the shield's lifetime.
+func _draw_shield() -> void:
+	var centre := Vector2(0.0, -4.0)
+	var pulse := 0.5 + 0.5 * sin(_time * 5.0)
+	var perimeter := PackedVector2Array()
+	for i in 32:
+		var point := centre + Vector2.from_angle(TAU * i / 32.0) * shield_radius
+		perimeter.append(point.snapped(Vector2(2, 2)))
+	_shield_fx.draw_colored_polygon(perimeter, Color(shield_color, 0.035 + 0.025 * pulse))
+	for i in perimeter.size():
+		var start := perimeter[i]
+		var end := perimeter[(i + 1) % perimeter.size()]
+		# Stair-step perimeter rather than a smooth vector circle.
+		var elbow := Vector2(end.x, start.y)
+		var tint := Color(shield_color, 0.45 + 0.25 * pulse)
+		_shield_fx.draw_line(start, elbow, tint, 2.0)
+		_shield_fx.draw_line(elbow, end, tint, 2.0)
+	for row in range(-48, 49, 8):
+		var y := float(row) + fmod(floorf(_time * 12.0) * 2.0, 8.0)
+		if absf(y) >= shield_radius:
+			continue
+		var half_width := floorf(sqrt(shield_radius * shield_radius - y * y) / 2.0) * 2.0
+		_shield_fx.draw_rect(Rect2(-half_width, centre.y + y, half_width * 2, 1), Color(shield_color, 0.08))
+	# Each remaining generator has a corresponding light on the shield's lower rim.
+	for i in 3:
+		var light := shield_color if i < _pods.size() else Color("3a5661")
+		_shield_fx.draw_rect(Rect2(-10 + i * 8, 46, 4, 2), light)
 
 
 ## Fireballs rain from the top of the screen around the player, one after another.
@@ -517,7 +548,7 @@ func _start_dash() -> void:
 func _muzzle(_index: int) -> Vector2:
 	if _jarvis.mech == null:
 		return _jarvis.global_position
-	return _jarvis.mech.to_global(Vector2(40.0, 12.0))
+	return _jarvis.mech.to_global(_jarvis.mech.MUZZLE_POINT)
 
 
 ## Swoop: he lines up and rams straight through the player, trailing the contact hitbox.
@@ -576,7 +607,7 @@ func _on_damaged(_amount: float, _source: Node) -> void:
 		_jarvis.bubble.say(Dialogue.get_line("hostile_hurt", GameState.current_level), "furious")
 
 
-## Shot down: the rotor dies, he drops out of the sky and the run's boss is finished.
+## Shot down: the machine detonates in place, then the run's boss is finished.
 func _die(killer: Node) -> void:
 	if _dead:
 		return
@@ -597,19 +628,23 @@ func _die(killer: Node) -> void:
 	if _walker != null:
 		_walker.queue_free()
 		_walker = null
-	var tween := _jarvis.create_tween()
-	tween.set_parallel()
-	tween.tween_property(_jarvis, "global_position",
-		_jarvis.global_position + Vector2(_rng.randf_range(-24.0, 24.0), 90.0), 1.1) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(_jarvis.body, "rotation", _jarvis.body.rotation + TAU * 1.5, 1.1)
-	tween.tween_property(_jarvis.body, "modulate", Color(0.2, 0.2, 0.25, 0.0), 1.1)
-	if _jarvis.mech != null: # the chassis buckles and drops with its pilot
-		tween.tween_property(_jarvis.mech, "rotation",
-			_jarvis.mech.rotation + deg_to_rad(70.0 * _jarvis.facing), 1.1) \
-			.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		tween.tween_property(_jarvis.mech, "modulate", Color(0.2, 0.2, 0.25, 0.0), 1.1)
+	_jarvis.body.modulate = Color(3, 3, 3)
+	if _jarvis.mech != null:
+		_jarvis.mech.set_process(false)
+		_jarvis.mech.modulate = Color(3, 3, 3)
+	for point in [Vector2(-16, -10), Vector2(16, -10), Vector2.ZERO]:
+		var blast := Explosion.new()
+		blast.radius = 26.0 if point != Vector2.ZERO else 40.0
+		get_tree().current_scene.add_child(blast)
+		blast.global_position = _jarvis.global_position + point
+		await get_tree().create_timer(0.12).timeout
+	_jarvis._shake_camera(8.0, 0.3)
+	var tween := _jarvis.create_tween().set_parallel()
+	tween.tween_property(_jarvis.body, "modulate:a", 0.0, 0.35)
+	if _jarvis.mech != null:
+		tween.tween_property(_jarvis.mech, "modulate:a", 0.0, 0.35)
 	await tween.finished
+	await get_tree().create_timer(0.35).timeout
 	defeated.emit()
 	_jarvis.queue_free()
 
@@ -617,7 +652,7 @@ func _die(killer: Node) -> void:
 ## He was running the whole floor: once he drops, the hatches seal and every unit still standing
 ## powers down with him instead of fighting on.
 func _black_out() -> void:
-	get_tree().call_group("minion_door", "shut_down")
+	get_tree().call_group("minion_spawner", "shut_down")
 	# Missiles still in the air would land and drop fresh minions after the fact.
 	for projectile in get_tree().get_nodes_in_group("enemy_projectile"):
 		projectile.queue_free()

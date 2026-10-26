@@ -13,10 +13,10 @@ var _energy: ProgressBar
 var _feed: Button
 var _boss_box: VBoxContainer
 var _boss_label: Label
-## Labels that get the full-width bar at the bottom; any other boss (the Foreman warm-up) gets a
-## small bar tucked into the top-right corner, out of the way of the fight.
+## JARVIS takes over his energy meter; other bosses retain the compact secondary bar.
 const MAIN_BOSS_LABELS: PackedStringArray = ["JARVIS"]
 var _boss_compact: bool = false
+var _jarvis_health: bool = false
 const CREDITS := preload("res://ui/credits/credits.tscn")
 ## Seconds between the boss going down and the credits fading in, so the shutdown can play.
 const CREDITS_DELAY := 2.5
@@ -258,6 +258,10 @@ func _update_tokens(value: int) -> void:
 
 
 func _update_energy(value: float) -> void:
+	if _jarvis_health:
+		_update_feed()
+		return
+	_energy.max_value = GameState.MAX_ENERGY
 	_energy.value = value
 	var state := "ENERGY" if GameState.jarvis_enabled else "OFFLINE"
 	_status.text = "JARVIS / %s / %d%%" % [state, ceili(value)]
@@ -268,6 +272,7 @@ func _update_energy(value: float) -> void:
 
 
 func _update_feed() -> void:
+	_feed.visible = not GameState.jarvis_hostile and not _jarvis_health
 	_feed.disabled = GameState.tokens < GameState.FEED_COST or GameState.energy >= GameState.MAX_ENERGY or GameState.jarvis_hostile
 
 
@@ -285,6 +290,8 @@ func _update_health(value: float, maximum: float) -> void:
 
 
 func _layout_bottom_bars() -> void:
+	if _jarvis_health:
+		return
 	if _boss_compact:
 		_boss_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 		_boss_box.offset_left = -432
@@ -318,15 +325,28 @@ func _flash_death() -> void:
 
 
 func _update_boss(value: float, maximum: float) -> void:
-	_boss_box.visible = maximum > 0.0 and value > 0.0
+	_boss_box.visible = not _jarvis_health and maximum > 0.0 and value > 0.0
 	_boss.max_value = maxf(1.0, maximum)
 	_boss.value = value
+	if _jarvis_health:
+		_energy.max_value = maxf(1.0, maximum)
+		_energy.value = value
+		_energy.add_theme_stylebox_override("fill", GameUI.style(GameUI.RED, GameUI.RED))
+		_status.text = "JARVIS / HEALTH / %d / %d" % [ceili(value), ceili(maximum)]
+		_status.add_theme_color_override("font_color", GameUI.RED)
 
 
 ## An empty label means no boss holds the bar (e.g. the handover): hide it until the next
 ## boss reports its health.
 func _update_boss_label(label: String) -> void:
 	_boss_label.text = label
+	_jarvis_health = MAIN_BOSS_LABELS.has(label)
+	_update_feed()
+	if _jarvis_health:
+		_update_boss(_boss.value, _boss.max_value)
+		return
+	_energy.remove_theme_stylebox_override("fill")
+	_update_energy(GameState.energy)
 	if label.is_empty():
 		_boss_box.hide()
 		return
@@ -338,6 +358,9 @@ func _update_boss_label(label: String) -> void:
 ## the submission form on a full run).
 func _boss_defeated() -> void:
 	_boss_box.hide()
+	if _jarvis_health:
+		_energy.value = 0
+		_status.text = "JARVIS / DEFEATED"
 	notify("BOSS DEFEATED")
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and "input_locked" in player:

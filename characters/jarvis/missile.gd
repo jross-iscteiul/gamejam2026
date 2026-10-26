@@ -5,22 +5,30 @@ extends Hitbox
 ## in the air (two hits) stops that.
 
 const MINION := preload("res://ui/placeholder_enemy/robot.tscn")
+const OUTLINE := Color("2b022a")
+const STEEL := Color("537b8a")
+const STEEL_LIGHT := Color("a9c1cb")
+const STEEL_DARK := Color("3a5661")
+const RED_SHADE := Color("b0202c")
+const BLUE_SHADE := Color("2a5fc4")
+const BLUE_DARK := Color("163a80")
 
 @export var speed: float = 85.0
 @export var turn_rate: float = 2.0 # radians per second
 @export var arm_seconds: float = 0.4 # straight climb before it starts homing
 @export var lifetime: float = 6.0
-@export var size: float = 3.0 # the missile is drawn at this multiple of a bullet-sized dart
+@export var size: float = 1.5 # half the original rocket size, including its hitboxes
 @export var health_points: float = 2.0
 ## No new minion when this many units are already up, so the arena never floods.
 @export var max_minions: int = 8
 @export var minion_patrol_distance: float = 60.0
 @export var minion_fire_interval: float = 2.2
-@export var hull_color: Color = Color("9aa6bd")
-@export var hull_dark: Color = Color("5f6b82")
-@export var nose_color: Color = Color("ff5555")
-@export var stripe_color: Color = Color("e0a53c")
-@export var flame_color: Color = Color("ffb347")
+# The yellow, red and blue paint ramps used by the level robots.
+@export var hull_color: Color = Color("ffe119")
+@export var hull_dark: Color = Color("ff6d05")
+@export var nose_color: Color = Color("e63946")
+@export var stripe_color: Color = Color("4d8dff")
+@export var flame_color: Color = Color("ff6d05")
 
 var direction := Vector2.UP
 var target: Node2D
@@ -54,7 +62,7 @@ func _ready() -> void:
 	hurtbox.collision_mask = 8
 	_add_shape(hurtbox, 4.5 * size)
 	add_child(hurtbox)
-	rotation = direction.angle()
+	rotation = snappedf(direction.angle(), TAU / 16.0)
 
 
 func _add_shape(area: Area2D, radius: float) -> void:
@@ -75,17 +83,24 @@ func _physics_process(delta: float) -> void:
 		var turn := clampf(direction.angle_to(wanted), -turn_rate * delta, turn_rate * delta)
 		direction = direction.rotated(turn)
 	position += direction * speed * delta
-	rotation = direction.angle()
+	# Sixteen visible headings keep the pixel silhouette crisp; guidance stays continuous.
+	rotation = snappedf(direction.angle(), TAU / 16.0)
 	queue_redraw()
 	if _age >= lifetime:
 		_explode()
 
 
-## Slammed into the level: a minion climbs out of the wreck, unless the arena is already full.
+## Arena impacts call in a ceiling reinforcement. Standalone scenes without a spawner retain
+## a minion emerging from the wreck. Neither route can exceed its population limit.
 func _on_ground(_body: Node2D) -> void:
 	if _done:
 		return
 	if _minion_count() < max_minions:
+		var spawner := get_tree().get_first_node_in_group("minion_spawner")
+		if spawner != null:
+			spawner.call_deferred("drop_minion")
+			_explode()
+			return
 		var minion := MINION.instantiate()
 		minion.patrol_distance = minion_patrol_distance
 		minion.fire_interval = minion_fire_interval
@@ -120,18 +135,33 @@ func _explode(big: bool = false) -> void:
 	queue_free.call_deferred()
 
 
-## Fireball, shock ring and sparks, left in the level so they outlive the missile.
+## Stepped pixel blast and square sparks, left in the level so they outlive the missile.
 func _blast(strength: float) -> void:
 	var blast := Node2D.new()
 	blast.z_index = 5
 	var radius := 7.0 * size * strength
 	var age := [0.0]
+	var pixel := maxf(1.0, size * 0.5)
+	var blast_color := flame_color # capture values: the missile is freed before the blast ends
+	var hot_color := hull_color
 	blast.draw.connect(func() -> void:
 		var t: float = age[0] / 0.35
-		blast.draw_circle(Vector2.ZERO, radius * (0.5 + t), Color(flame_color, 0.8 * (1.0 - t)))
-		blast.draw_circle(Vector2.ZERO, radius * 0.6 * (1.0 - t), Color(1.0, 0.95, 0.75, 1.0 - t))
-		blast.draw_arc(Vector2.ZERO, radius * (0.7 + t * 1.2), 0.0, TAU, 32,
-			Color(1.0, 1.0, 1.0, 0.7 * (1.0 - t)), 2.0))
+		var frame := floorf(t * 5.0) / 5.0
+		var reach := snappedf(radius * (0.5 + frame), pixel)
+		var outer := Color(blast_color, 0.9 * (1.0 - t))
+		var inner := Color(hot_color, 1.0 - t)
+		# Overlapping bars make an eight-cornered fireball on a fixed pixel grid.
+		var half_reach := snappedf(reach * 0.5, pixel)
+		blast.draw_rect(Rect2(-reach, -half_reach, reach * 2, half_reach * 2), outer)
+		blast.draw_rect(Rect2(-half_reach, -reach, half_reach * 2, reach * 2), outer)
+		var core := snappedf(radius * 0.5 * (1.0 - frame), pixel)
+		blast.draw_rect(Rect2(-core, -core, core * 2, core * 2), inner)
+		var hot_core := snappedf(core * 0.5, pixel)
+		blast.draw_rect(Rect2(-hot_core, -hot_core, hot_core * 2, hot_core * 2), Color(1, 1, 1, 1.0 - t))
+		for i in 12:
+			var offset := Vector2.from_angle(TAU * i / 12.0) * radius * (0.8 + frame * 1.5)
+			offset = offset.snapped(Vector2.ONE * pixel)
+			blast.draw_rect(Rect2(offset, Vector2.ONE * pixel * 2), inner))
 	var sparks := CPUParticles2D.new()
 	sparks.one_shot = true
 	sparks.explosiveness = 1.0
@@ -169,13 +199,53 @@ func _shake(strength: float) -> void:
 
 
 func _draw() -> void:
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * size)
-	var flicker := 0.6 + 0.4 * sin(_age * 50.0)
-	draw_circle(Vector2(-7.0, 0.0), 2.8 * flicker, flame_color)
-	draw_circle(Vector2(-6.0, 0.0), 1.4 * flicker, Color("fff0b0"))
-	draw_rect(Rect2(-5.0, -2.0, 9.0, 4.0), hull_color)
-	draw_rect(Rect2(-5.0, 1.0, 9.0, 1.0), hull_dark)
-	draw_rect(Rect2(-1.0, -2.0, 1.5, 4.0), stripe_color)
-	draw_colored_polygon(PackedVector2Array([Vector2(4.0, -2.0), Vector2(7.0, 0.0), Vector2(4.0, 2.0)]), nose_color)
-	draw_colored_polygon(PackedVector2Array([Vector2(-5.0, -2.0), Vector2(-3.0, -2.0), Vector2(-6.0, -4.0)]), hull_dark)
-	draw_colored_polygon(PackedVector2Array([Vector2(-5.0, 2.0), Vector2(-3.0, 2.0), Vector2(-6.0, 4.0)]), hull_dark)
+	# Half-size cells add 16-bit detail without enlarging the projectile or its hitboxes.
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * size * 0.5)
+	_draw_exhaust()
+	# Blue swept fins, built from rectangular pixel steps.
+	for side in [-1, 1]:
+		var top := -8.0 if side < 0 else 3.0
+		draw_rect(Rect2(-12, top, 8, 5), OUTLINE)
+		draw_rect(Rect2(-10, top + 1, 5, 3), BLUE_DARK)
+		draw_rect(Rect2(-10, top + 1, 3, 2), stripe_color)
+		draw_rect(Rect2(-12, -6 if side < 0 else 4, 2, 2), OUTLINE)
+	# Dark outline, warm armour and a narrow white highlight, like the robot shells.
+	draw_rect(Rect2(-12, -4, 24, 8), OUTLINE)
+	draw_rect(Rect2(-10, -5, 18, 10), OUTLINE)
+	draw_rect(Rect2(-10, -3, 20, 6), hull_dark)
+	draw_rect(Rect2(-9, -4, 16, 6), hull_color)
+	draw_rect(Rect2(-8, -3, 14, 1), Color.WHITE)
+	draw_rect(Rect2(-8, 3, 16, 1), Color("ff0000"))
+	# Steel nozzle and blue retaining band.
+	draw_rect(Rect2(-13, -3, 4, 6), OUTLINE)
+	draw_rect(Rect2(-12, -2, 2, 4), STEEL)
+	draw_rect(Rect2(-12, -2, 2, 1), STEEL_LIGHT)
+	draw_rect(Rect2(-4, -4, 3, 8), BLUE_SHADE)
+	draw_rect(Rect2(-4, -4, 2, 5), stripe_color)
+	draw_rect(Rect2(-4, -3, 1, 1), Color.WHITE)
+	# Stepped red warhead: no smooth polygons or circles.
+	draw_rect(Rect2(9, -4, 3, 8), OUTLINE)
+	draw_rect(Rect2(12, -3, 2, 6), OUTLINE)
+	draw_rect(Rect2(14, -1, 2, 2), OUTLINE)
+	draw_rect(Rect2(9, -3, 2, 6), RED_SHADE)
+	draw_rect(Rect2(9, -3, 2, 4), nose_color)
+	draw_rect(Rect2(11, -2, 2, 4), nose_color)
+	draw_rect(Rect2(13, -1, 1, 2), nose_color)
+	draw_rect(Rect2(10, -2, 1, 1), Color.WHITE)
+	# Inset guidance lens and two small metal rivets.
+	draw_rect(Rect2(2, -1, 4, 3), OUTLINE)
+	draw_rect(Rect2(3, 0, 2, 1), Color("0cffeb"))
+	draw_rect(Rect2(-7, 1, 1, 1), STEEL_DARK)
+	draw_rect(Rect2(7, 1, 1, 1), STEEL_DARK)
+
+
+func _draw_exhaust() -> void:
+	var frame := int(_age * 14.0) % 3
+	var length := 6 + frame * 2
+	draw_rect(Rect2(-13 - length, -2, length, 4), OUTLINE)
+	draw_rect(Rect2(-12 - length, -1, length - 1, 2), Color("ff0000"))
+	draw_rect(Rect2(-17 - frame, -2, 5 + frame, 4), flame_color)
+	draw_rect(Rect2(-16 - frame, -1, 4 + frame, 2), hull_color)
+	draw_rect(Rect2(-14, -1, 2, 2), Color.WHITE)
+	if frame != 1:
+		draw_rect(Rect2(-23 - frame * 2, -1, 2, 2), flame_color)
