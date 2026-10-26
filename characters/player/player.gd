@@ -52,6 +52,20 @@ static var selected_skin: int = -1
 ## Upward speed is multiplied by this when jump is released early (1 = fixed-height jumps).
 @export_range(0.0, 1.0) var jump_cut: float = 1.0
 
+@export_group("Fall Damage")
+@export var fall_damage_enabled: bool = true
+## Drops up to this height (px, from the highest point of the airtime to the landing) are free.
+## Default 9 tiles: a double jump on flat ground (~200 px) never hurts.
+@export var safe_fall_height: float = 288.0
+## Every this many px beyond the safe height counts as one "step" (default 1 tile).
+@export var fall_damage_step: float = 32.0
+## Damage = fall_damage_scale * steps ^ fall_damage_exponent (rounded up). Defaults (0.15, 2):
+## drop of 10 tiles = 1 HP, 12 = 2, 13 = 3, 15 = 6, 17 = 10 (lethal at 10 HP). Higher = harsher.
+@export var fall_damage_scale: float = 0.15
+@export var fall_damage_exponent: float = 2.0
+## Cap per landing (0 = no cap).
+@export var fall_damage_max: float = 0.0
+
 @export_group("Gun")
 ## Shots per second while shoot is held.
 @export var fire_rate: float = 6.0
@@ -60,6 +74,11 @@ static var selected_skin: int = -1
 var facing: int = 1
 var respawn_point: Vector2
 var shielded: bool = false
+## Height of the last landing's drop (px) and the damage it dealt; for tests and debugging.
+var last_fall_height: float = 0.0
+var last_fall_damage: float = 0.0
+var _fall_peak_y: float = 0.0
+var _was_on_floor: bool = true
 ## Set by stunning hazard hits; no steering, jumping or dashing until the player lands.
 var stunned: bool = false
 ## Set by cutscenes: no steering, jumping, shooting or JARVIS abilities.
@@ -122,9 +141,32 @@ func _physics_process(delta: float) -> void:
 		return
 	_dash_cooldown_left = maxf(_dash_cooldown_left - delta, 0.0)
 	_move(delta)
+	_track_fall()
 	_aim()
 	_shoot(delta)
 	_animate()
+
+
+## Remembers the highest point while airborne; on landing, hurts for the drop beyond the safe height.
+func _track_fall() -> void:
+	var on_floor := is_on_floor()
+	if not on_floor:
+		_fall_peak_y = global_position.y if _was_on_floor else minf(_fall_peak_y, global_position.y)
+	elif not _was_on_floor:
+		last_fall_height = global_position.y - _fall_peak_y
+		last_fall_damage = fall_damage_for(last_fall_height)
+		if last_fall_damage > 0.0:
+			take_damage(last_fall_damage, self)
+	_was_on_floor = on_floor
+
+
+## Damage for a drop of `height` px with the current settings (0 when safe or disabled).
+func fall_damage_for(height: float) -> float:
+	if not fall_damage_enabled or height <= safe_fall_height:
+		return 0.0
+	var steps := (height - safe_fall_height) / maxf(fall_damage_step, 1.0)
+	var damage := ceilf(fall_damage_scale * pow(steps, fall_damage_exponent))
+	return minf(damage, fall_damage_max) if fall_damage_max > 0.0 else damage
 
 
 func _move(delta: float) -> void:
@@ -253,6 +295,8 @@ func respawn() -> void:
 	_sprite.play(&"idle")
 	global_position = respawn_point
 	velocity = Vector2.ZERO
+	_fall_peak_y = respawn_point.y # a respawn is not a fall
+	_was_on_floor = true
 	_dash_time_left = 0.0
 	_dash_cooldown_left = 0.0
 	_knockback_left = 0.0
