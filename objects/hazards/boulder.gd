@@ -7,8 +7,8 @@ extends Hazard
 
 const RADIUS := 48.0
 
-@export var delay := 2.0
-@export var speed := 115.0
+@export var delay := 1.5
+@export var speed := 130.0
 @export var accel_time := 1.0
 @export var distance := 640.0
 @export var gate: Gate

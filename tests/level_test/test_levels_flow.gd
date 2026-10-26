@@ -36,12 +36,13 @@ func _step(_d: float) -> bool:
 		2: _press("interact")
 		3: _check(s.scene_file_path.ends_with("level_02.tscn"), "L1 door -> level 2"); _goto("Door")
 		4: _press("interact")
-		5: _check(s.scene_file_path.ends_with("level_03.tscn"), "L2 door -> level 3"); _check(s.get_node("Gate").closed, "L3 gate starts closed"); _goto("Lever")
-		6: _press("interact")
-		7: _check(not s.get_node("Gate").closed, "lever opens gate"); _goto("Door")
-		8: _press("interact")
-		9: _check(s.scene_file_path.ends_with("level_04.tscn"), "L3 door -> level 4"); _check(not s.get_node("Gate").closed, "L4 gate starts open"); _goto("BossTrigger")
-		10:
+		5: _check(s.scene_file_path.ends_with("level_03.tscn"), "L2 door -> level 3"); _check(s.get_node("Gate").closed, "L3 gate starts closed"); _check(not s.get_node("Checkpoint").active, "checkpoint starts inactive"); _goto("Checkpoint")
+		6: _check(s.get_node("Checkpoint").active, "touching a checkpoint activates it"); _goto("Lever")
+		7: _check(not s.get_node("Lever").on, "lever starts off"); _press("interact")
+		8: _check(not s.get_node("Gate").closed and s.get_node("Lever").on, "lever switches on and opens gate"); _goto("Door")
+		9: _press("interact")
+		10: _check(s.scene_file_path.ends_with("level_04.tscn"), "L3 door -> level 4"); _check(not s.get_node("Gate").closed, "L4 gate starts open"); _goto("BossTrigger")
+		11:
 			_check(s.get_node("Gate").closed, "boss trigger closes gate")
 			_check(s.get_node("Player/Camera2D").limit_left == 832, "camera locked to arena")
 			return true
