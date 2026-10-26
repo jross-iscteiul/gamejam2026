@@ -58,6 +58,9 @@ var energy: float = MAX_ENERGY:
 			jarvis_enabled_changed.emit(jarvis_enabled)
 
 var current_level: int = 0
+## Set by the L3 trap door right before the scene change; the next level's level.gd consumes
+## it once (spawns a few falling rubble chunks with the player) and clears it back to false.
+var arrived_by_trap: bool = false
 var jarvis_hostile: bool = false:
 	set(value):
 		var was_enabled := jarvis_enabled

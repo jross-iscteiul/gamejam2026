@@ -21,6 +21,11 @@ func _ready() -> void:
 	camera.reset_smoothing()
 	if jarvis_scene and number in range(1, 5):
 		add_child(jarvis_scene.instantiate())
+	if GameState.arrived_by_trap:
+		GameState.arrived_by_trap = false
+		var rubble := Node2D.new()
+		rubble.set_script(preload("res://levels/shared/trap_rubble.gd"))
+		$Player.add_child(rubble)
 	_play_music()
 
 
