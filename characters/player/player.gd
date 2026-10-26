@@ -62,6 +62,8 @@ var respawn_point: Vector2
 var shielded: bool = false
 ## Set by stunning hazard hits; no steering, jumping or dashing until the player lands.
 var stunned: bool = false
+## Set by cutscenes: no steering, jumping, shooting or JARVIS abilities.
+var input_locked: bool = false
 
 var _skin: PlayerSkin
 var _move_direction: int = 1
@@ -134,14 +136,14 @@ func _move(delta: float) -> void:
 		_air_jumps_left = maxi(_air_jumps_left, air_jumps) # keeps an unused boost_jump()
 		_can_air_dash = true
 
-	var input_x := 0.0 if stunned else Input.get_axis("move_left", "move_right")
+	var input_x := 0.0 if stunned or input_locked else Input.get_axis("move_left", "move_right")
 	if _dash_time_left > 0.0: # straight horizontal burst, gravity paused
 		_dash_time_left -= delta
 		velocity = Vector2(facing * dash_speed, 0.0)
 	else:
 		if not on_floor:
 			velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
-		if stunned:
+		if stunned or input_locked:
 			pass
 		elif Input.is_action_just_pressed("jump"):
 			if on_floor:
@@ -164,7 +166,7 @@ func _move(delta: float) -> void:
 		if input_x != 0.0:
 			facing = 1 if input_x > 0.0 else -1
 			_move_direction = facing
-		elif absf(velocity.x) <= 5.0:
+		elif absf(velocity.x) <= 5.0 and not input_locked:
 			var mouse_delta_x := _touch_aim.x if _touch_active else get_global_mouse_position().x - global_position.x
 			if absf(mouse_delta_x) > (0.05 if _touch_active else 1.0):
 				facing = 1 if mouse_delta_x > 0.0 else -1
@@ -306,6 +308,8 @@ func _aim() -> void:
 
 func _shoot(delta: float) -> void:
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
+	if input_locked:
+		return
 	if not _touch_shooting and get_viewport().gui_get_hovered_control() != null:
 		return
 	var shooting := _touch_shooting if _touch_active else Input.is_action_pressed("shoot")

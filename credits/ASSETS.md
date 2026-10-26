@@ -5,7 +5,7 @@ Every asset pack used in the game: author, link, license.
 | Asset | Used for | Author | Link | License |
 |---|---|---|---|---|
 | Industrial Tileset (FREE sample, 32px) | Level tiles (`assets/art/industrial_tileset/tiles/`), robot player and test enemy (`assets/art/industrial_tileset/robot/`) | Atomic Realm | https://atomicrealm.itch.io/industrial-tileset | Free for commercial and non-commercial use, edits allowed. **May not be repackaged, resold or redistributed**, even modified. |
-| Space planet landscape (EPS, file `41371868_2303.w026.n002.3330B.p1.3330.eps`) | Intro background (`assets/art/intro/background.png`, converted to PNG) | Freepik (author TBD) | TBD | TBD (check the Freepik license and attribution requirements) |
+| Space planet landscape (EPS, file `41371868_2303.w026.n002.3330B.p1.3330.eps`) | Intro background (`assets/art/intro/background.png`, converted to PNG; pixelized copy in `assets/art/backgrounds/intro_pixel/`) | Freepik (author TBD) | TBD | TBD (check the Freepik license and attribution requirements) |
 | Press Start 2P | Package 3 menus and HUD (`ui/shared/press_start_2p.ttf`) | The Press Start 2P Project Authors / CodeMan38 | https://github.com/google/fonts/tree/main/ofl/pressstart2p | SIL Open Font License 1.1; bundled in `ui/shared/FONT_LICENSE.txt` |
 | Cyberpunk Street (city skyline, Version 1, Version 2 layers) | Level parallax backgrounds (`assets/art/backgrounds/`) | Luis Zuno (Ansimuz) | https://ansimuz.itch.io | CC0 1.0 (public domain; no attribution required, redistribution allowed) |
 | Cyberpunk Street music | Level soundtrack (`assets/audio/music/cyberpunk_street.ogg`) | Luis Zuno (Ansimuz) | https://ansimuz.itch.io | CC0 1.0 (public domain; no attribution required, redistribution allowed) |
