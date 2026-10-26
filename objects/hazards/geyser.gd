@@ -40,6 +40,10 @@ func _enter(next: String) -> void:
 	_hitbox.get_child(0).set_deferred("disabled", state != "erupt")
 
 
+func _draw_bounds() -> Rect2:
+	return Rect2(-2.0, -height, width + 4.0, height + SURFACE + 4.0)
+
+
 func _draw() -> void:
 	if state == "warn": # bubbles and spatter jumping off the surface
 		for i in 4:

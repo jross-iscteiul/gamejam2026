@@ -28,6 +28,10 @@ func _ready() -> void:
 	hitbox.damage = damage
 
 
+func _draw_bounds() -> Rect2:
+	return Rect2(-4, 0, size.x + 8, size.y)
+
+
 func _draw() -> void:
 	var c: Array = COLORS[kind]
 	draw_rect(Rect2(-4, SURFACE - 10, size.x + 8, size.y - SURFACE + 10), c[2]) # glow

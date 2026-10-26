@@ -56,6 +56,10 @@ func _set_beam(active: bool) -> void:
 	_hitbox.get_child(0).set_deferred("disabled", not active)
 
 
+func _draw_bounds() -> Rect2:
+	return Rect2().expand(Vector2(0, length) if vertical else Vector2(length, 0)).grow(8.0)
+
+
 func _draw() -> void:
 	var end := Vector2(0, length) if vertical else Vector2(length, 0)
 	var state := state_at(time)

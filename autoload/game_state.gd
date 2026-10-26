@@ -14,7 +14,6 @@ signal boss_label_changed(label: String)
 ## JARVIS finished switching sides in the boss arena and is now the final opponent.
 signal jarvis_betrayed
 signal jarvis_say(text: String, mood: String)
-signal cutscene_finished
 signal jarvis_enabled_changed(enabled: bool)
 signal level_started(level: int)
 signal token_collected(value: int)

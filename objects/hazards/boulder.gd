@@ -48,6 +48,10 @@ func _on_player_respawned() -> void:
 		_clock = 0.0
 
 
+func _draw_bounds() -> Rect2:
+	return Rect2(-RADIUS, -RADIUS, 2.0 * RADIUS, 2.0 * RADIUS).grow(2.0)
+
+
 func _draw() -> void:
 	var roll := (position.x - _start.x) / RADIUS
 	draw_circle(Vector2.ZERO, RADIUS, Color(0.3, 0.27, 0.25))

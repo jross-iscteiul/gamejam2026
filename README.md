@@ -133,7 +133,6 @@ GameState.add_trust(-10)
 | `boss_health_changed(current: float, maximum: float)` | Boss |
 | `boss_defeated` | Boss |
 | `jarvis_say(text: String, mood: String)` | JARVIS / anyone who wants JARVIS to talk |
-| `cutscene_finished` | Cutscenes |
 
 ```gdscript
 # Emitting
@@ -161,7 +160,7 @@ Unknown categories return a `[placeholder: ...]` string, so you can call any cat
 |---|---|---|
 | 1 Player | `player_died`, `player_respawned` | - |
 | 2 JARVIS | `jarvis_say` | `enemy_killed`, `tokens_changed`, `trust_changed` |
-| 3 Game logic | `tokens_changed`, `trust_changed`, `cutscene_finished` | all |
+| 3 Game logic | `tokens_changed`, `trust_changed` | all |
 | 4 Enemies & Boss | `enemy_killed`, `boss_health_changed`, `boss_defeated` | - |
 | 5 Levels | `level_completed` | - |
 | 6 Gambling / Roasting | `add_tokens`, `add_trust` | `player_died`, `enemy_killed` |

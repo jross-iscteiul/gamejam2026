@@ -15,11 +15,27 @@ const PLAYER_LAYER := 2
 @export var stun: bool = false
 
 var time := 0.0
+var _screen: VisibleOnScreenNotifier2D
 
 
+func _enter_tree() -> void:
+	if Engine.is_editor_hint() or _screen:
+		return
+	_screen = VisibleOnScreenNotifier2D.new()
+	_screen.rect = _draw_bounds()
+	add_child(_screen)
+
+
+## The clock always runs (gameplay timing reads it); off-screen hazards skip the redraw.
 func _process(delta: float) -> void:
 	time += delta
-	queue_redraw()
+	if Engine.is_editor_hint() or _screen.is_on_screen():
+		queue_redraw()
+
+
+## Local rect covering everything _draw() can paint; subclasses that draw bigger override it.
+func _draw_bounds() -> Rect2:
+	return Rect2(-64, -64, 128, 128)
 
 
 ## Adds a continuous 1-damage Hitbox (or instant kill) with the given shape at a local offset.
