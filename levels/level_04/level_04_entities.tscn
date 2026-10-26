@@ -4,13 +4,18 @@
 [ext_resource type="PackedScene" path="res://objects/token/token_small.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://objects/token/token_big.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://ui/placeholder_enemy/robot.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://ui/placeholder_boss/square_boss.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://characters/boss/boss_robot.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://objects/spawner/minion_door.tscn" id="6"]
 
 [node name="Level04Entities" type="Node2D"]
 script = ExtResource("1")
 level_number = 4
 
-[node name="SquareBoss" parent="." instance=ExtResource("5")]
+[node name="BossRobot" parent="." instance=ExtResource("5")]
+
+[node name="MinionDoor" parent="." instance=ExtResource("6")]
+position = Vector2(1520, 352)
+minion_spawn_offset = Vector2(-26, -16)
 
 [node name="small1" parent="." instance=ExtResource("2")]
 position = Vector2(208, 328)

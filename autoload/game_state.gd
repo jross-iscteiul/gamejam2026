@@ -9,6 +9,10 @@ signal player_respawned
 signal level_completed(level: int)
 signal boss_defeated
 signal boss_health_changed(current: float, maximum: float)
+## The boss health bar changed owner (boss phases, JARVIS taking over the fight).
+signal boss_label_changed(label: String)
+## JARVIS finished switching sides in the boss arena and is now the final opponent.
+signal jarvis_betrayed
 signal jarvis_say(text: String, mood: String)
 signal cutscene_finished
 signal jarvis_enabled_changed(enabled: bool)

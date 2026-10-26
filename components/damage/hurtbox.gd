@@ -3,6 +3,8 @@ extends Area2D
 ## Receives damage from hostile layers only. Supports either side monitoring overlaps.
 
 @export var health: Health
+## Armour: incoming damage is scaled by this before it reaches the health. 1 = full damage.
+@export_range(0.0, 1.0) var damage_multiplier: float = 1.0
 var _last_hits: Dictionary = {}
 
 
@@ -34,4 +36,4 @@ func receive_hit(hitbox: Hitbox) -> void:
 
 func take_damage(amount: float, source: Node = null) -> void:
 	if health:
-		health.take_damage(amount, source)
+		health.take_damage(amount * damage_multiplier, source)

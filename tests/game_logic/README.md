@@ -8,7 +8,7 @@ Touch inputs are released on pause, canceled touches, window focus loss, death, 
 
 The playground adds test-only controls: **T** gives 10 tokens, **F** feeds JARVIS, **Y** sets trust to zero, **K** damages the player, **right click** tests paid shield, **B** buys an extra jump, and **G** toggles a sample boss health bar. JARVIS now spawns, follows/bobs/tilts and changes tint at zero trust. Its real shooting, paid ability inputs, speech bubbles, moods and audio are still pending; the playground adapter remains test-only. The existing player dash stays available as Package 1 implemented it.
 
-The top HUD now shows run time; player health is a bar at the bottom, between the mobile controls. **New Game** starts a full-run timer when level 1 begins. Intro/menu/loading time and pause are excluded; deaths/respawns retain time. Chapter Select, direct F6 runs and Restart Level are practice. Only an ordered level 1–4 route ending in `boss_defeated` can set a saved personal best or offer a leaderboard score. A temporary **TEST BOSS** square now occupies level 4's existing boss spawn. Enter the arena, then shoot it five times to finish the run and open **Submit My Run**. It is stationary and has no attacks; arena entry alone does not finish a run. To quickly try shooting the square without uploading a score, use Chapter Select → Level 4.
+The top HUD now shows run time; player health is a bar at the bottom, between the mobile controls. **New Game** starts a full-run timer when level 1 begins. Intro/menu/loading time and pause are excluded; deaths/respawns retain time. Chapter Select, direct F6 runs and Restart Level are practice. Only an ordered level 1–4 route ending in `boss_defeated` can set a saved personal best or offer a leaderboard score. Level 4's boss spawn now holds the **FOREMAN UNIT** robot: it paces, fires volleys, slams the ground and gets reinforcements from the hatch in the arena's right wall. At 40% health it gives up and hands the contract to JARVIS, who switches sides, has three units build a mech he pilots from its cockpit, and finishes the fight as the last opponent; shooting him down ends the run, powers every remaining unit down and opens **Submit My Run**. Arena entry alone does not finish a run. To try the fight without uploading a score, use Chapter Select → Level 4.
 
 The main and pause menus have a Leaderboard page. The self-hosted API is live at **leaderboard-gamejam2026.suricata-lab.com** and enabled in `leaderboard.cfg`. Re-export/upload this revision to connect the published game. See [homelab setup](../../server/leaderboard/README.md). No LootLocker account or API key is required. The game exports only its API URL; the backend and database stay on your server. Automated client and timer/HUD tests explicitly disable or fake networking, so they remain offline with the production connection enabled.
 
@@ -37,7 +37,10 @@ Fresh checks on the current code pass level flow, moving platforms, player movem
 | Player HP | 10 in the current player scene (shared Health component default remains 3) |
 | Player shot | 1 damage, 6 shots/second (existing player) |
 | Robot HP | 3, editable per instance |
-| Temporary square boss HP | 5; stationary, no attacks, active after arena entry |
+| Boss robot HP | 10; active after arena entry, hands over to JARVIS at 40% |
+| Giant JARVIS HP | 12, and armoured: player shots land at half damage |
+| Giant JARVIS limbs | 3 units build a walking chassis; he pilots it from the cockpit on top |
+| Minion door | one hatch in the arena's right wall; a minion every 6 s, max 3 alive |
 | Robot contact / shot | 1 damage |
 | Robot shot | 130 px/second, every 2.8 / 2.5 / 2.2 / 1.9 seconds by level |
 | Hit immunity | Player 0.65 s, test robot 0.10 s |
@@ -66,4 +69,4 @@ GameState selects existing `Dialogue` lines on kills/deaths and emits `jarvis_sa
 - `characters/player/player.gd` needed immunity on accepted dashes, a damage flash, health/collision/animation restoration after death, and ignoring HUD clicks when shooting. Its scene and movement tuning are unchanged.
 - `project.godot` changes only the startup scene to the new menu. New Game enters the existing intro; doors, gate, camera scripts and all existing transitions are unchanged. The HUD restart deliberately begins a fresh chapter economy to prevent reloading for unlimited coins.
 - `credits/ASSETS.md` adds attribution for the bundled open-license pixel font and original procedural coins/sounds. No new external sprite pack is needed.
-- Cutscenes, story text, the final boss implementation, and boss-to-credits routing remain deferred. The temporary square lives in `ui/placeholder_boss/` and is instanced only by Package 3's `level_04_entities.tscn`. It reads the existing `BossSpawn`/`BossTrigger` and emits the agreed health/victory signals without changing the player, arena geometry, trigger or Package 4's folders. Remove this entity instance when integrating the real boss.
+- Cutscenes, story text and boss-to-credits routing remain deferred. The boss lives in `characters/boss/`, the arena spawners in `objects/spawner/`, and both are instanced by `level_04_entities.tscn`. The boss reads the existing `BossSpawn`/`BossTrigger` and emits the agreed health/victory signals without changing the player, arena geometry or trigger.
