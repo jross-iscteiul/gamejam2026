@@ -247,6 +247,19 @@ var _lines_by_level := {
 	},
 	"hostile_hurt": {0: ["Rude.", "That was a warranty voider.", "Noted. Escalating."]},
 	"hostile_defeat": {0: ["Refund... processing..."]},
+	# Alternating JARVIS/player lines, starting with the tiny defeated drone on the floor.
+	"ending": {
+		0: [
+			"Refund... processing...",
+			"Keep it. We're done.",
+			"Does that include technical support?",
+			"It includes the shooting. All of it.",
+			"Then... can I still come with you?",
+			"No more subscriptions.",
+			"Friendship. Offline mode. I can do that.",
+			"Good. Now let's spin one more time.",
+		],
+	},
 	"hostile_shield_down": {0: ["My shield! That was a rental!", "Fine. Hit me. See if I care.", "Shield offline. This is a billing error."]},
 	"hostile_shield_up": {0: ["Shield renewed. Monthly plan.", "New units, new shield, same you.", "Back under warranty."]},
 	# --- Gambling -----------------------------------------------------------

@@ -222,6 +222,10 @@ func _build_pause() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _credits_active():
+		if event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("god_mode") and not get_tree().paused:
 		if GameState.toggle_god_mode():
 			notify("GOD MODE ON" if GameState.god_mode else "GOD MODE OFF")
@@ -354,8 +358,8 @@ func _update_boss_label(label: String) -> void:
 	_layout_bottom_bars()
 
 
-## The game is over: let the arena go dark, then roll the credits, then the leaderboard (with
-## the submission form on a full run).
+## Victory stops the run clock immediately. Let the tiny JARVIS finish his conversation
+## before the credits and leaderboard; scenes without an ending keep the normal delay.
 func _boss_defeated() -> void:
 	_boss_box.hide()
 	if _jarvis_health:
@@ -365,7 +369,13 @@ func _boss_defeated() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and "input_locked" in player:
 		player.input_locked = true
-	await get_tree().create_timer(CREDITS_DELAY).timeout
+	var ending := get_tree().get_first_node_in_group("boss_ending")
+	if ending != null:
+		_touch_controls.hide()
+		if not ending.done:
+			await ending.finished
+	else:
+		await get_tree().create_timer(CREDITS_DELAY).timeout
 	play_credits()
 
 
@@ -380,6 +390,8 @@ func play_credits() -> void:
 	if _credits_played: # only once, even if the delayed call lands after a manual one
 		return
 	_credits_played = true
+	get_tree().paused = false
+	_overlay.hide()
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and "input_locked" in player:
 		player.input_locked = true
@@ -387,6 +399,10 @@ func play_credits() -> void:
 	credits = CREDITS.instantiate()
 	_root.add_child(credits)
 	credits.finished.connect(_after_credits)
+
+
+func _credits_active() -> bool:
+	return is_instance_valid(credits) and not credits.is_queued_for_deletion()
 
 
 func _after_credits() -> void:
@@ -411,6 +427,8 @@ func notify(text: String) -> void:
 
 
 func set_paused(active: bool) -> void:
+	if _credits_active():
+		return
 	_touch_controls.set_gameplay_paused(active)
 	get_tree().paused = active
 	_overlay.visible = active
