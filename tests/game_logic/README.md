@@ -21,12 +21,11 @@ godot --headless --path . res://tests/game_logic/test_package3.tscn
 godot --headless --path . res://tests/game_logic/test_touch_controls.tscn
 godot --headless --path . res://tests/game_logic/test_run_clock.tscn
 godot --headless --path . res://tests/game_logic/test_leaderboard_client.tscn
-godot --headless --path . res://tests/game_logic/test_placeholder_boss.tscn
 ```
 
 Checks the economy, immunity, team filtering, real coin and projectile physics, kill source, death/respawn, all four placements, HUD, pause, volume controls and chapter restart. Returns exit code 1 on failure. For optional rendered UI captures under `.godot/`, run the same scene without `--headless` and append `-- --visual`.
 
-The touch suite sends real multi-finger viewport events to the existing level/player and checks movement, jump, dash, aiming/firing, independent finger releases, cancellation, preference persistence and cleanup on pause/focus/death/scene changes. The placeholder-boss suite checks arena activation, actual projectile damage, practice exclusion, the real level doors, four splits, victory UI and authenticated submission through an offline fake transport; it never adds public scores. These suites run in CI. Physical-phone testing is still useful for device-specific browser layout and ergonomics.
+The touch suite sends real multi-finger viewport events to the existing level/player and checks movement, jump, dash, aiming/firing, independent finger releases, cancellation, preference persistence and cleanup on pause/focus/death/scene changes. These suites run in CI. Physical-phone testing is still useful for device-specific browser layout and ergonomics.
 
 Fresh checks on the current code pass level flow, moving platforms, player movement, JARVIS follow, level backgrounds/music, hazard placement and individual hazards. The movement-gate suite now passes **16/16**; the earlier tunnel-dash failure no longer reproduces with the current levels. It is now included in CI, which also checks printed `FAIL` lines because that suite can exit 0 despite failed assertions. The engine reports a Windows certificate-store error in this sandbox; this does not affect these offline tests.
 

@@ -18,7 +18,8 @@ extends Node
 ##          U pit bottom like ~, with a grab hand in the pit: anyone over it is caught, up to the first
 ##            solid tile above the pit (so a platform over it is a safe route)
 ## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
-##            all levels play MUSIC on the Music bus.
+##            all levels play MUSIC on the Music bus; "trap_door": true turns the exit door (D)
+##            into a trap (see levels/shared/door.gd `trap`).
 
 const TILE := 32
 const TILESET_PATH := "res://levels/shared/tileset.tres"
@@ -121,7 +122,7 @@ const LEVELS := [
 	},
 	{ # Level 3 - control room: climb to the upper deck lever, drop down, pass the opened gate to the door.
 		"fg": 1, "sky": Color(0.75, 0.82, 0.9), "difficulty": 1.45,
-		"background": "neon_street",
+		"background": "neon_street", "trap_door": true,
 		"map": [
 			"##############################################################################################################",
 			"#...................................................................................................#........#",
@@ -282,6 +283,7 @@ func _build_level(index: int, tileset: TileSet) -> void:
 				"D":
 					var door = _add(root, door_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 					door.next_level = "res://levels/level_%02d/level_%02d.tscn" % [index + 2, index + 2]
+					door.trap = def.get("trap_door", false)
 				"C": _add(root, checkpoint_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 				"~", "U":
 					if map[y][x - 1] != ch: # one trigger per run of pit cells
