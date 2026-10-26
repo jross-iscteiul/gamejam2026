@@ -24,6 +24,7 @@ var mark := Vector2.ZERO
 var hit_at := Vector2.INF
 var stun_seen := false
 var boulder: Node2D
+var hammer: Node2D
 
 
 func _ready() -> void:
@@ -62,6 +63,26 @@ func _place(at: Vector2) -> void:
 	hit_at = Vector2.INF
 	player.stunned = false
 	stun_seen = false
+
+
+## The handle is solid: the player's shape can't move through its middle from either side.
+func _check_hammer_handle() -> void:
+	var handle := hammer.get_node_or_null("Handle") as AnimatableBody2D
+	_check(handle != null and handle.collision_layer == 1, "hammer: handle is a solid world body")
+	if handle == null:
+		return
+	var arm: Node2D = hammer.get_node("Arm")
+	# Check the physics server, not the node: a body under a rotating parent looks right but stays put.
+	var physics_xf := PhysicsServer2D.body_get_state(handle.get_rid(), PhysicsServer2D.BODY_STATE_TRANSFORM) as Transform2D
+	_check(absf(angle_difference(physics_xf.get_rotation(), arm.global_rotation)) < 0.05 and absf(arm.rotation) > 0.05,
+		"hammer: handle's physics body swings with the arm (body %.1f, arm %.1f deg)" % [rad_to_deg(physics_xf.get_rotation()), rad_to_deg(arm.global_rotation)])
+	var middle: Vector2 = hammer.to_global(Vector2(0, hammer.length * 0.5).rotated(arm.rotation))
+	var saved := player.global_transform
+	var blocked_from_left := player.test_move(Transform2D(0.0, middle + Vector2(-30, 0)), Vector2(60, 0))
+	var blocked_from_right := player.test_move(Transform2D(0.0, middle + Vector2(30, 0)), Vector2(-60, 0))
+	var free_away := not player.test_move(Transform2D(0.0, middle + Vector2(-30, 0)), Vector2(-20, 0))
+	player.global_transform = saved
+	_check(blocked_from_left and blocked_from_right and free_away, "hammer: can't pass through the handle")
 
 
 func _check(ok: bool, msg: String) -> void:
@@ -122,13 +143,14 @@ func _physics_process(_delta: float) -> void:
 			_place(Vector2(600, -20))
 			_next()
 		[3, 1]: # hammer: 1 HP and pushed away from the pivot
-			_spawn(HAMMER, Vector2(2000, -120))
+			hammer = _spawn(HAMMER, Vector2(2000, -120))
 			_place(Vector2(2030, -20))
 			mark = player.global_position
 		[3, 200]:
 			_check(hits >= 1, "hammer: hit the player (got %d)" % hits)
 			_check(hit_at != Vector2.INF and player.global_position.x - 2000.0 > hit_at.x - 2000.0 + 16.0,
 				"hammer: knocked away from the pivot (hit at x=%.0f, now x=%.0f)" % [hit_at.x, player.global_position.x])
+			_check_hammer_handle()
 			_place(Vector2(600, -20))
 			_next()
 		[4, 1]: # lava: instant death, then respawn at the checkpoint with full health
