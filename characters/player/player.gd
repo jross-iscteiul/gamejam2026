@@ -13,9 +13,7 @@ const SKINS := [
 	preload("res://characters/player/biker.tres"),
 	preload("res://characters/player/bot_wheel.tres"),
 	preload("res://characters/player/penguin.tres"),
-	preload("res://characters/player/free_soldier.tres"),
-	preload("res://characters/player/robot.tres"),
-	preload("res://characters/player/gas_mask.tres"),
+	preload("res://characters/player/gas_mask_bright.tres"),
 ]
 const BULLET_SCENE: PackedScene = preload("res://characters/player/bullet.tscn")
 const SHIELD_BUBBLE: GDScript = preload("res://characters/player/shield_bubble.gd")
@@ -25,7 +23,7 @@ const FEET_Y: float = 16.0
 ## Last character picked with the number keys; carries over between levels.
 static var selected_skin: int = -1
 
-@export_enum("Biker", "Bot Wheel", "Penguin", "Free Soldier", "Robot", "Gas Mask") var skin_index: int = 0:
+@export_enum("Biker", "Bot Wheel", "Penguin", "Gas Mask") var skin_index: int = 0:
 	set(value):
 		skin_index = value
 		if is_node_ready():

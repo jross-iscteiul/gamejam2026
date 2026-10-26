@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://b60f0qgmecw6h" path="res://assets/player/biker/run.png" id="3_res"]
 [ext_resource type="Texture2D" uid="uid://cijn11ud7euy0" path="res://assets/player/biker/jump.png" id="4_res"]
 [ext_resource type="Texture2D" uid="uid://csyfoxgdum2u2" path="res://assets/player/biker/gun.png" id="5_res"]
-[ext_resource type="Texture2D" uid="uid://c46ufo8yvnibf" path="res://assets/player/biker/bullet.png" id="6_res"]
+[ext_resource type="Texture2D" uid="uid://bb82w5rorb5ih" path="res://assets/player/bot_wheel/bullet.png" id="6_res"]
 [ext_resource type="AudioStream" uid="uid://cw0kj7o84oh0x" path="res://assets/player/biker/jump.wav" id="7_res"]
 [ext_resource type="AudioStream" uid="uid://dcviehnfs4la1" path="res://assets/player/biker/step.wav" id="8_res"]
 [ext_resource type="AudioStream" uid="uid://cvptt02iqyrff" path="res://assets/player/biker/shoot.wav" id="9_res"]

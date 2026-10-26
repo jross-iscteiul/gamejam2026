@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpv5voaxbxu5v"
-path="res://.godot/imported/run.png-aad7fa4f88600d81be427c3d4a5949e3.ctex"
+uid="uid://bi5ag8g3eaq4o"
+path="res://.godot/imported/idle.png-628dc39b647a763c00d1f79ddade0f25.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/player/free_soldier/run.png"
-dest_files=["res://.godot/imported/run.png-aad7fa4f88600d81be427c3d4a5949e3.ctex"]
+source_file="res://assets/player/gas_mask_bright/idle.png"
+dest_files=["res://.godot/imported/idle.png-628dc39b647a763c00d1f79ddade0f25.ctex"]
 
 [params]
 
