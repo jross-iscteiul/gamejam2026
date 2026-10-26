@@ -1,5 +1,7 @@
 # Gamejam 2026
 
+Play online at https://jross-iscteiul.github.io/gamejam2026/
+
 A 2D pixel art platformer in Godot 4.7 (GL Compatibility), played in the browser on itch.io. You fight through four levels with JARVIS, an AI sidekick who works for tokens, and it turns out he's the villain.
 
 The full task split per package is in [TASKS 1.md](TASKS%201.md).
