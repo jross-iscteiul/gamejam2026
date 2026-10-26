@@ -12,9 +12,11 @@ const MINION := preload("res://ui/placeholder_enemy/robot.tscn")
 		if is_node_ready():
 			_left = first_delay if active else 0.0
 		queue_redraw()
-@export var interval: float = 6.0
+@export var interval: float = 5.0
 @export var first_delay: float = 2.5
-@export var max_alive: int = 3
+## Minions that walk out each time the hatch opens.
+@export var per_release: int = 2
+@export var max_alive: int = 6
 @export var open_seconds: float = 0.35
 @export var minion_patrol_distance: float = 72.0
 @export var minion_fire_interval: float = 2.2
@@ -68,7 +70,9 @@ func _release() -> void:
 	_spawned.assign(_spawned.filter(func(node: Variant) -> bool: return is_instance_valid(node)))
 	if _spawned.size() < max_alive:
 		await _slide(1.0)
-		if not _offline:
+		for i in mini(per_release, max_alive - _spawned.size()):
+			if _offline:
+				break
 			var minion := MINION.instantiate()
 			minion.patrol_distance = minion_patrol_distance
 			minion.fire_interval = minion_fire_interval
