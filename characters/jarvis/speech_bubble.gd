@@ -13,6 +13,8 @@ signal finished # the line was fully shown and the bubble hid
 @export var chars_per_second: float = 40.0
 @export var hold_seconds: float = 1.0 # after the line finishes typing
 @export var hold_per_char: float = 0.01 # longer lines stay a bit longer
+## Off: the line stays up until replaced or clear() (tap-through dialogue).
+@export var auto_hide: bool = true
 @export var background: Color = Color("131c2e")
 @export var text_color: Color = Color("edf5ed")
 ## Border colour per mood; matches JARVIS's eye colours.
@@ -54,6 +56,12 @@ func is_typing() -> bool:
 	return visible and _shown < text.length()
 
 
+## Reveals the rest of the line at once.
+func skip_typing() -> void:
+	_shown = text.length()
+	queue_redraw()
+
+
 func clear() -> void:
 	hide()
 	text = ""
@@ -65,7 +73,7 @@ func _process(delta: float) -> void:
 	if _shown < text.length():
 		_shown = minf(_shown + chars_per_second * delta, text.length())
 		queue_redraw()
-	else:
+	elif auto_hide:
 		_hold_left -= delta
 		if _hold_left <= 0.0:
 			clear()

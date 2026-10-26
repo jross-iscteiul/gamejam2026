@@ -78,7 +78,7 @@ func _show_page(page: VBoxContainer, sound: bool = true) -> void:
 func _start_new_game() -> void:
 	GameState.reset_run()
 	GameState.prepare_full_run()
-	get_tree().change_scene_to_file("res://ui/intro/intro.tscn")
+	get_tree().change_scene_to_file("res://levels/intro/intro.tscn")
 
 
 func _start_chapter(level: int) -> void:

@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://tests/extras_test/test_extras_map.gd" id="1_map"]
+[ext_resource type="PackedScene" path="res://objects/gambling/gambling_station.tscn" id="2_station"]
+[ext_resource type="Script" path="res://objects/roasting/roast_director.gd" id="3_roast"]
+
+[node name="TestExtrasMap" type="Node2D"]
+script = ExtResource("1_map")
+
+[node name="RoastDirector" type="Node" parent="."]
+script = ExtResource("3_roast")
+
+[node name="GamblingStation" parent="." instance=ExtResource("2_station")]
+position = Vector2(256, 0)
+
+[node name="StingyStation" parent="." instance=ExtResource("2_station")]
+position = Vector2(416, 0)
+max_spins = 1

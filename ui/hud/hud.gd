@@ -44,6 +44,7 @@ func _ready() -> void:
 	GameState.tokens_changed.connect(_update_tokens)
 	GameState.energy_changed.connect(_update_energy)
 	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_energy(GameState.energy))
+	GameState.god_mode_changed.connect(_on_god_mode_changed)
 	GameState.boss_health_changed.connect(_update_boss)
 	GameState.boss_defeated.connect(_boss_defeated)
 	GameState.jarvis_say.connect(_say)
@@ -98,8 +99,10 @@ func _build_hud() -> void:
 	_tokens.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_tokens.custom_minimum_size.x = 264
 	row.add_child(_tokens)
-	_feed = GameUI.button("FEED / 3", _feed_jarvis)
-	_feed.tooltip_text = "Spend 3 tokens to compact JARVIS's context: +25% energy. JARVIS shuts down at zero energy."
+	_feed = GameUI.button("FEED [F] / 3", _feed_jarvis)
+	_feed.tooltip_text = "F: spend 3 tokens to compact JARVIS's context: +25% energy. JARVIS shuts down at zero energy."
+	# Never keep keyboard focus: a focused button is activated by Space, which also jumps.
+	_feed.focus_mode = Control.FOCUS_NONE
 	row.add_child(_feed)
 	var pause := GameUI.button("II", func() -> void: set_paused(true))
 	pause.tooltip_text = "Pause (Esc / P)"
@@ -201,6 +204,13 @@ func _build_pause() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("god_mode") and not get_tree().paused:
+		if GameState.toggle_god_mode():
+			notify("GOD MODE ON" if GameState.god_mode else "GOD MODE OFF")
+		else:
+			notify("GOD MODE: PRACTICE ONLY")
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("pause"):
 		set_paused(not get_tree().paused)
 		get_viewport().set_input_as_handled()
@@ -211,14 +221,21 @@ func _process(delta: float) -> void:
 	_sector.text = ("SECTOR %02d / 04" if GameState.run_clock.eligible else "PRACTICE / %02d") % GameState.current_level
 	if get_tree().paused:
 		return
+	if Input.is_action_just_pressed("feed"): # F key or the mobile FEED pad
+		_feed_jarvis()
 	_speech_time -= delta
 	_notice_time -= delta
 	_speech.visible = _speech_time > 0.0
 	_notice.visible = _notice_time > 0.0
 
 
+func _on_god_mode_changed(_active: bool) -> void:
+	_update_tokens(GameState.tokens)
+	_update_energy(GameState.energy)
+
+
 func _update_tokens(value: int) -> void:
-	_tokens.text = "TOKENS %03d" % value
+	_tokens.text = "TOKENS INF" if GameState.god_mode else "TOKENS %03d" % value
 	_update_feed()
 
 
@@ -226,6 +243,8 @@ func _update_energy(value: float) -> void:
 	_energy.value = value
 	var state := "ENERGY" if GameState.jarvis_enabled else "OFFLINE"
 	_status.text = "JARVIS / %s / %d%%" % [state, ceili(value)]
+	if GameState.god_mode:
+		_status.text = "JARVIS / GOD MODE / INF"
 	_status.add_theme_color_override("font_color", GameUI.RED if value <= 20 else GameUI.CYAN)
 	_update_feed()
 

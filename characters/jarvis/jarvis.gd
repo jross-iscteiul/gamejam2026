@@ -83,6 +83,11 @@ extends Node2D
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
 
+@export_group("Dormant")
+## Lies powered down where placed (intro), ignoring the player, until wake() is called.
+@export var dormant: bool = false
+@export var dormant_tilt_degrees: float = 90.0
+
 const SpeechBubble := preload("res://characters/jarvis/speech_bubble.gd")
 
 ## JARVIS's moods; "neutral" is the normal mood. "offline" is used while disabled.
@@ -129,14 +134,17 @@ func _ready() -> void:
 	ability_denied.connect(_on_ability_denied)
 	_low_energy_warned = GameState.energy < low_energy_threshold
 	_reset_idle()
-	power = 1.0 if GameState.jarvis_enabled else 0.0
+	power = 1.0 if GameState.jarvis_enabled and not dormant else 0.0
 	_find_player()
-	if player:
+	if player and not dormant:
 		global_position = _target_position()
-	_apply_enabled_look(GameState.jarvis_enabled)
+	_apply_enabled_look(GameState.jarvis_enabled and not dormant)
 
 
 func _process(delta: float) -> void:
+	if dormant:
+		_lie_down(delta)
+		return
 	if not is_instance_valid(player) and not _find_player():
 		return
 	_tick_power(delta)
@@ -169,6 +177,20 @@ func _move(delta: float) -> void:
 		global_position = target
 	else:
 		global_position = global_position.lerp(target, 1.0 - exp(-speed * delta))
+
+
+func _lie_down(delta: float) -> void:
+	_tick_power(delta)
+	body.rotation = deg_to_rad(dormant_tilt_degrees)
+	body.position.y = 0.0
+	_update_mood()
+
+
+## Ends dormant: powers up and flies to his follow position next to the player.
+func wake() -> void:
+	dormant = false
+	_apply_enabled_look(GameState.jarvis_enabled)
+	_reset_idle()
 
 
 ## Starts a timed assist pose (dash or boost); the shield pose follows player.shielded.
@@ -221,7 +243,7 @@ func _pose_body() -> void:
 
 ## Resting mood from the energy bar (or "offline" while disabled).
 func base_mood() -> String:
-	if not GameState.jarvis_enabled:
+	if dormant or not GameState.jarvis_enabled:
 		return "offline"
 	if GameState.energy < furious_energy:
 		return "furious"
@@ -268,6 +290,8 @@ func _reset_idle() -> void:
 
 ## GameState already picked the line (kills, deaths); just show it.
 func _on_jarvis_say(text: String, line_mood: String) -> void:
+	if dormant:
+		return
 	bubble.say(text, normalize_mood(line_mood))
 	_reset_idle()
 
@@ -288,7 +312,7 @@ func _on_energy_changed(energy: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not is_instance_valid(player) and not _find_player():
+	if dormant or (not is_instance_valid(player) and not _find_player()) or player.input_locked:
 		return
 	_handle_dash_input()
 	_handle_boost_jump_input()
@@ -366,7 +390,7 @@ func fire_rate() -> float:
 
 func _shoot(delta: float) -> void:
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
-	if _fire_cooldown > 0.0 or not GameState.jarvis_enabled:
+	if _fire_cooldown > 0.0 or not GameState.jarvis_enabled or player.input_locked:
 		return
 	_fire_cooldown = 1.0 / fire_rate()
 	var bullet: PlayerBullet = bullet_scene.instantiate()
@@ -410,7 +434,7 @@ func _triangular(low: float, high: float, mode: float) -> float:
 
 
 func _tick_power(delta: float) -> void:
-	var target := 1.0 if GameState.jarvis_enabled else 0.0
+	var target := 1.0 if GameState.jarvis_enabled and not dormant else 0.0
 	var seconds := power_up_seconds if target > power else power_down_seconds
 	power = move_toward(power, target, delta / maxf(seconds, 0.01))
 	body.power = power

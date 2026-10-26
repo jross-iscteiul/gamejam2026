@@ -367,6 +367,13 @@ func _build_level(index: int, tileset: TileSet) -> void:
 		entities.name = "Entities"
 		_add(root, entities)
 
+	# Package 6 owns extras (gambling stations, roasts, side quests, secrets).
+	var extras_path := "res://levels/level_%02d/level_%02d_extras.tscn" % [index + 1, index + 1]
+	if ResourceLoader.exists(extras_path):
+		var extras: Node = (load(extras_path) as PackedScene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+		extras.name = "Extras"
+		_add(root, extras)
+
 	var scene := PackedScene.new()
 	scene.pack(root)
 	var path := "res://levels/level_%02d/level_%02d.tscn" % [index + 1, index + 1]
