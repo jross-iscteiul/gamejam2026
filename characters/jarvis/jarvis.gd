@@ -701,7 +701,7 @@ func _mount_unit(unit: Node2D, index: int) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(unit, "rotation", 0.0, betrayal_assembly_seconds)
 	tween.tween_property(unit, "scale", Vector2.ONE * MechFrame.SLOT_SCALE, betrayal_assembly_seconds)
-	tween.tween_property(unit, "modulate", hostile_color, betrayal_assembly_seconds)
+	tween.tween_property(unit, "modulate", Color.WHITE, betrayal_assembly_seconds) # already painted red
 	await tween.finished
 	assembled_units.append(unit)
 	_shake_camera(betrayal_shake_strength * 0.6, 0.18) # the clunk of the lock
