@@ -234,7 +234,7 @@ func _handle_dash_input() -> void:
 func _handle_boost_jump_input() -> void:
 	if player.is_on_floor():
 		_boosted_this_air = false
-	if not Input.is_action_just_pressed("jump") or player.can_jump() or _boosted_this_air:
+	if not Input.is_action_just_pressed("jump") or player.can_jump() or player.stunned or _boosted_this_air:
 		return
 	if _buy(&"boost_jump"):
 		_boosted_this_air = true

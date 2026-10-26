@@ -4,3 +4,5 @@
 
 [node name="Blade" type="Node2D"]
 script = ExtResource("1")
+knockback = 280.0
+stun = true

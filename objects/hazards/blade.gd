@@ -1,6 +1,6 @@
 @tool
 extends Hazard
-## Spinning saw blade (1 HP). Fixed when `travel` is zero, otherwise eases back and forth
+## Spinning saw blade (1 HP); a hit knocks the player away and stuns it until it lands. Fixed when `travel` is zero, otherwise eases back and forth
 ## between its origin and origin + travel, pausing at each end. The track is drawn as a line.
 
 const RADIUS := 13.0
