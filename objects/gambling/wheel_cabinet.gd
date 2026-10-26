@@ -19,6 +19,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	# Side plates behind the stake controls (right) and EXIT (left).
+	draw_plate(Rect2(530, 98, 108, 184))
+	draw_plate(Rect2(2, 230, 108, 52))
 	draw_plate(panel)
 	for p: Vector2 in [
 		panel.position + Vector2(8, 8),

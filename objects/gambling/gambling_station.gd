@@ -11,7 +11,8 @@ signal spun(outcome: int)
 const WHEEL_SCENE := preload("res://objects/gambling/wheel_ui.tscn")
 
 @export var odds: GamblingOdds
-## Token cost per spin, indexed by level (0 = tests, 1-4 = levels).
+## Minimum stake per spin, indexed by level (0 = tests, 1-4 = levels).
+## The player can bet anything from this up to all their tokens.
 @export var cost_per_level: Array[int] = [2, 2, 3, 4, 5]
 ## Paid spins per station.
 @export var max_spins: int = 3
@@ -26,6 +27,9 @@ const WHEEL_SCENE := preload("res://objects/gambling/wheel_ui.tscn")
 @export var double_multiplier: int = 2
 ## JARVIS energy (GameState.energy, 0-100) gained or lost.
 @export var energy_boost: float = 20.0
+## Energy outcomes scale with stake / minimum stake, up to this many times.
+## Keeps an all-in MALWARE from wiping JARVIS (or RECHARGE from always filling him).
+@export var max_energy_scale: float = 3.0
 @export_group("Penalties")
 ## TAX takes this many times the cost on top of the bet.
 @export var tax_multiplier: int = 1
@@ -38,6 +42,8 @@ var free_spins_left: int
 
 ## True while the current spin was a free one.
 var _spin_was_free := false
+## Stake of the current spin. Rewards and penalties scale with it.
+var _stake := 0
 
 var _loss_streak := 0
 var _rng := RandomNumberGenerator.new()
@@ -65,11 +71,23 @@ func is_next_spin_free() -> bool:
 	return free_spins_left > 0
 
 
-## Cost of the next spin (0 while a free spin is available).
-func get_spin_cost() -> int:
-	return 0 if is_next_spin_free() else get_cost()
+## Smallest stake allowed on this level.
+func get_min_stake() -> int:
+	return get_cost()
 
 
+## Biggest stake allowed right now (all-in). A free spin is always min stake.
+func get_max_stake() -> int:
+	if is_next_spin_free():
+		return get_min_stake()
+	return maxi(GameState.tokens, get_min_stake())
+
+
+func clamp_stake(stake: int) -> int:
+	return clampi(stake, get_min_stake(), get_max_stake())
+
+
+## Level minimum stake (kept for older callers).
 func get_cost() -> int:
 	if cost_per_level.is_empty():
 		return 0
@@ -82,29 +100,47 @@ func reset_spins() -> void:
 	_update_prompt()
 
 
-## Called by the wheel. Pays and rolls. Returns the outcome, or -1 if the spin
-## was refused (no spins left, not enough tokens).
-func try_spin() -> int:
+## Called by the wheel. Pays [param stake] and rolls. Returns the outcome, or
+## -1 if the spin was refused (no spins left, not enough tokens). A free spin
+## bets the minimum stake without paying it.
+func try_spin(stake: int = -1) -> int:
 	if spins_left <= 0:
 		Dialogue.say("gambling_out_of_spins")
 		return -1
 	_spin_was_free = free_spins_left > 0
+	_stake = get_min_stake() if (_spin_was_free or stake < 0) else clamp_stake(stake)
 	if _spin_was_free:
 		free_spins_left -= 1
-	elif not GameState.spend_tokens(get_cost()):
+	elif not GameState.spend_tokens(_stake):
 		Dialogue.say("gambling_broke")
 		return -1
 	spins_left -= 1
 	_update_prompt()
+	var all_in := not _spin_was_free and GameState.tokens == 0 and _stake > get_min_stake()
+	Dialogue.say("gambling_all_in" if all_in else "gambling_spin")
+	return _roll()
+
+
+## Stake of the last spin (what the rewards were computed from).
+func get_last_stake() -> int:
+	return _stake
+
+
+## Energy rewards/penalties scale with how many minimum stakes were bet.
+func get_energy_amount(base: float) -> float:
+	var ratio := minf(float(_stake) / maxf(1.0, float(get_min_stake())), max_energy_scale)
+	return minf(base * ratio, GameState.MAX_ENERGY)
+
+
+func _roll() -> int:
 	var outcome := odds.roll(get_level(), _loss_streak, _rng)
 	_loss_streak = 0 if GamblingOdds.is_win(outcome) else _loss_streak + 1
-	Dialogue.say("gambling_spin")
 	return outcome
 
 
 ## Called by the wheel once the animation has finished.
 func apply_outcome(outcome: int) -> void:
-	var cost := get_cost()
+	var cost := _stake
 	match outcome:
 		GamblingOdds.Outcome.JACKPOT:
 			GameState.add_tokens(cost * jackpot_multiplier)
@@ -113,7 +149,7 @@ func apply_outcome(outcome: int) -> void:
 			GameState.add_tokens(cost * double_multiplier)
 			Dialogue.say("gambling_win")
 		GamblingOdds.Outcome.ENERGY_BOOST:
-			GameState.add_energy(energy_boost)
+			GameState.add_energy(get_energy_amount(energy_boost))
 			Dialogue.say("gambling_win")
 		GamblingOdds.Outcome.REFUND:
 			if not _spin_was_free:
@@ -125,7 +161,7 @@ func apply_outcome(outcome: int) -> void:
 			_take_tokens(cost * tax_multiplier)
 			Dialogue.say("gambling_troll")
 		GamblingOdds.Outcome.ENERGY_DRAIN:
-			GameState.add_energy(-energy_drain)
+			GameState.add_energy(-get_energy_amount(energy_drain))
 			Dialogue.say("gambling_troll")
 		GamblingOdds.Outcome.JARVIS_RAISE:
 			_take_tokens(jarvis_raise)
@@ -143,14 +179,14 @@ func _take_tokens(amount: int) -> void:
 
 ## Short text shown on the wheel after a spin.
 func describe_outcome(outcome: int) -> String:
-	var cost := get_cost()
+	var cost := _stake
 	match outcome:
 		GamblingOdds.Outcome.JACKPOT:
 			return "OVERCLOCK! +%d TKN" % (cost * jackpot_multiplier)
 		GamblingOdds.Outcome.DOUBLE:
 			return "x2 BOOST! +%d TKN" % (cost * double_multiplier)
 		GamblingOdds.Outcome.ENERGY_BOOST:
-			return "RECHARGE. +%d JARVIS ENERGY" % energy_boost
+			return "RECHARGE. +%d JARVIS ENERGY" % get_energy_amount(energy_boost)
 		GamblingOdds.Outcome.REFUND:
 			if _spin_was_free:
 				return "ROLLBACK. FREE SPIN, NOTHING TO REFUND"
@@ -158,7 +194,7 @@ func describe_outcome(outcome: int) -> String:
 		GamblingOdds.Outcome.TAX:
 			return "CPU TAX! -%d TKN" % (cost * tax_multiplier)
 		GamblingOdds.Outcome.ENERGY_DRAIN:
-			return "MALWARE DETECTED. -%d JARVIS ENERGY" % energy_drain
+			return "MALWARE DETECTED. -%d JARVIS ENERGY" % get_energy_amount(energy_drain)
 		GamblingOdds.Outcome.JARVIS_RAISE:
 			return "JARVIS FEE. -%d TKN" % jarvis_raise
 		GamblingOdds.Outcome.FAKE_JACKPOT:
@@ -194,6 +230,6 @@ func _update_prompt() -> void:
 		if is_next_spin_free():
 			_interactable.prompt_text = "%s ACCESS ENGINE (FREE SPIN!)" % key
 		else:
-			_interactable.prompt_text = "%s ACCESS ENGINE (%d TKN)" % [key, get_cost()]
+			_interactable.prompt_text = "%s ACCESS ENGINE (MIN %d TKN)" % [key, get_cost()]
 	else:
 		_interactable.prompt_text = "OFFLINE"

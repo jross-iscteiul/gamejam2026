@@ -41,6 +41,7 @@ var _moods := {
 	"ability_used": "smug",
 	"gambling_enter": "happy",
 	"gambling_spin": "happy",
+	"gambling_all_in": "happy",
 	"gambling_win": "annoyed",
 	"gambling_jackpot": "annoyed",
 	"gambling_lose": "smug",
@@ -229,6 +230,14 @@ var _lines_by_level := {
 			"Round and round it goes...",
 			"Come on, come on... (for me, I mean).",
 			"Spinning! No refunds.",
+		],
+	},
+	"gambling_all_in": {
+		0: [
+			"ALL IN?! Finally, some respect for the house.",
+			"Every token. Bold. Stupid, but bold.",
+			"All in. I'll make sure to remember you fondly.",
+			"Even team KPI isn't this reckless with their budget.",
 		],
 	},
 	"gambling_win": {

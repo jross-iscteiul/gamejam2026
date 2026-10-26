@@ -4,13 +4,19 @@ extends CanvasLayer
 ##
 ## Pauses the game while open. The result is decided by the station first,
 ## then the wheel animates to it (including the troll animations).
-## [E]/[Space] spin, [Esc]/[P] leave.
+## [E]/[Space] spin, [Esc]/[P] leave, [A]/[D] change stake, [W] all-in, [S] minimum.
+##
+## Drawn under the HUD (layer 15 < HUD 20) and sized to fit between the HUD's
+## top bar and health bar, so tokens and JARVIS energy stay visible and update live.
 
 signal closed
 
 const SPIN_TURNS := 5
 const SPIN_TIME := 3.0
 const LAYOUT_SIZE := Vector2(640, 360)
+## Screen space kept free for the HUD (fractions of the screen height).
+const HUD_TOP := 0.125
+const HUD_BOTTOM := 0.12
 ## Colors match MachineDrawing (industrial tileset palette).
 const NEUTRAL := MachineDrawing.TEAL
 const ALERT := MachineDrawing.RED
@@ -30,6 +36,13 @@ var _music: Node
 var _music_mode: Node.ProcessMode
 var _spin_button: Button
 var _exit_button: Button
+var _minus_button: Button
+var _plus_button: Button
+var _min_button: Button
+var _all_in_button: Button
+var _stake_label: Label
+## Chosen stake for the next paid spin.
+var _stake := 0
 var _slices: Array = [
 	{"outcome": GamblingOdds.Outcome.JACKPOT, "label": "OVERCLOCK", "color": Color("e8b01c")},
 	{"outcome": GamblingOdds.Outcome.NOTHING, "label": "NULL", "color": Color("4a5a78")},
@@ -76,6 +89,61 @@ func _ready() -> void:
 func _build_buttons() -> void:
 	_spin_button = _make_button("SPIN", Rect2(536, 236, 96, 40), MachineDrawing.YELLOW, _on_spin_pressed)
 	_exit_button = _make_button("EXIT", Rect2(8, 236, 96, 40), MachineDrawing.STEEL_LIGHT, close)
+	# Stake controls, right column above SPIN.
+	var title := _make_label("STAKE", Rect2(536, 104, 96, 12), MachineDrawing.YELLOW)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stake_label = _make_label("", Rect2(536, 120, 96, 30), Color.WHITE)
+	_stake_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_minus_button = _make_button("-", Rect2(536, 156, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(-1))
+	_plus_button = _make_button("+", Rect2(588, 156, 44, 22), MachineDrawing.STEEL_LIGHT, _change_stake.bind(1))
+	_min_button = _make_button("MIN", Rect2(536, 184, 96, 20), MachineDrawing.STEEL_LIGHT, _set_stake_min)
+	_all_in_button = _make_button("ALL IN", Rect2(536, 208, 96, 20), MachineDrawing.ORANGE, _set_stake_all_in)
+	_stake = station.get_min_stake() if station != null else 0
+
+
+## Pixel-font label built 3x bigger and scaled down (crisp in this 3x layer).
+func _make_label(text: String, rect: Rect2, color: Color) -> Label:
+	var k := 3.0
+	var label := Label.new()
+	label.text = text
+	label.position = rect.position
+	label.size = rect.size * k
+	label.scale = Vector2.ONE / k
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", PixelFont.SOURCE)
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", MachineDrawing.OUTLINE)
+	label.add_theme_constant_override("outline_size", 9)
+	add_child(label)
+	return label
+
+
+func _change_stake(delta: int) -> void:
+	if station == null or _spinning or station.is_next_spin_free():
+		return
+	_stake = station.clamp_stake(_stake + delta)
+	_update_info()
+
+
+func _set_stake_min() -> void:
+	if station != null and not _spinning:
+		_stake = station.get_min_stake()
+		_update_info()
+
+
+func _set_stake_all_in() -> void:
+	if station != null and not _spinning and not station.is_next_spin_free():
+		_stake = station.get_max_stake()
+		_update_info()
+
+
+## The HUD's pause menu can unpause the tree while the machine is open
+## (RESUME). Keep the game paused until the machine itself closes.
+func _process(_delta: float) -> void:
+	if not get_tree().paused and not is_queued_for_deletion():
+		get_tree().paused = true
+		_set_touch_paused(true)
 
 
 ## Buttons are built 3x bigger and scaled down so the pixel font stays crisp
@@ -137,11 +205,14 @@ func _set_touch_paused(active: bool) -> void:
 ## scaled up to the real viewport (1920x1080 = 3x), centered.
 func _fit_to_screen() -> void:
 	var screen := get_viewport().get_visible_rect().size
-	var s := minf(screen.x / LAYOUT_SIZE.x, screen.y / LAYOUT_SIZE.y)
+	var top := screen.y * HUD_TOP
+	var band := screen.y * (1.0 - HUD_TOP - HUD_BOTTOM)
+	var s := minf(screen.x / LAYOUT_SIZE.x, band / LAYOUT_SIZE.y)
 	scale = Vector2(s, s)
-	offset = (screen - LAYOUT_SIZE * s) / 2.0
-	$Dim.size = LAYOUT_SIZE + offset * 2.0 / s
+	offset = Vector2((screen.x - LAYOUT_SIZE.x * s) / 2.0, top + (band - LAYOUT_SIZE.y * s) / 2.0)
+	# Dim the whole screen (the HUD draws above it, on a higher layer).
 	$Dim.position = -offset / s
+	$Dim.size = screen / s
 
 
 func close() -> void:
@@ -157,8 +228,24 @@ func close() -> void:
 ## _input (not _unhandled_input) so Esc closes the machine before the HUD's
 ## pause menu sees it.
 func _input(event: InputEvent) -> void:
+	# The HUD's pause menu is open on top (it focuses its buttons): let it have the keys.
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus != null and not is_ancestor_of(focus):
+		return
 	var spin := event.is_action_pressed("interact") or event.is_action_pressed("jump")
 	var leave := event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")
+	var stake_keys := {"move_left": -1, "move_right": 1, "move_up": 1000000, "move_down": -1000000}
+	for action: String in stake_keys:
+		if event.is_action_pressed(action):
+			get_viewport().set_input_as_handled()
+			var d: int = stake_keys[action]
+			if absi(d) == 1:
+				_change_stake(d)
+			elif d > 0:
+				_set_stake_all_in()
+			else:
+				_set_stake_min()
+			return
 	if not (spin or leave):
 		return
 	get_viewport().set_input_as_handled()
@@ -176,7 +263,7 @@ func _spin() -> void:
 	_spinning = true
 	_wheel.highlight_index = -1
 	_frame.eye_color = NEUTRAL
-	var outcome := station.try_spin()
+	var outcome := station.try_spin(_stake)
 	_update_info()
 	if outcome < 0:
 		_set_result("> ACCESS DENIED", ALERT)
@@ -193,7 +280,7 @@ func _spin() -> void:
 			await _spin_to(jackpot, SPIN_TIME, SPIN_TURNS, 0.1)
 			_frame.spinning = false
 			_frame.eye_color = WIN
-			_set_result("> OVERCLOCK!!! +%d TKN" % (station.get_cost() * station.jackpot_multiplier), WIN)
+			_set_result("> OVERCLOCK!!! +%d TKN" % (station.get_last_stake() * station.jackpot_multiplier), WIN)
 			await _blink(jackpot, 3)
 			await _glitch(0.6)
 			_frame.eye_color = ALERT
@@ -312,13 +399,32 @@ func _set_result(text: String, color: Color) -> void:
 func _update_info() -> void:
 	if station == null:
 		return
-	var controls := "[E] EXECUTE    [ESC] DISCONNECT" if station.spins_left > 0 else "NO CYCLES LEFT    [ESC] DISCONNECT"
+	var free := station.is_next_spin_free()
+	var out := station.spins_left <= 0
+	if not free:
+		_stake = station.clamp_stake(_stake)
+	var broke := not free and GameState.tokens < station.get_min_stake()
+	var controls := "[A/D] STAKE  [E] SPIN  [ESC] EXIT"
+	if out:
+		controls = "NO CYCLES LEFT    [ESC] DISCONNECT"
+	elif free:
+		controls = "FREE SPIN!  [E] SPIN  [ESC] EXIT"
+	elif broke:
+		controls = "NOT ENOUGH TOKENS    [ESC] DISCONNECT"
 	if _spin_button != null:
-		_spin_button.disabled = _spinning or station.spins_left <= 0
+		_spin_button.disabled = _spinning or out
 		_exit_button.disabled = _spinning
-	var cost := "FREE SPIN" if station.is_next_spin_free() else "COST %d TKN" % station.get_cost()
+		var locked := _spinning or out or free or broke
+		_minus_button.disabled = locked or _stake <= station.get_min_stake()
+		_plus_button.disabled = locked or _stake >= station.get_max_stake()
+		_min_button.disabled = locked or _stake <= station.get_min_stake()
+		_all_in_button.disabled = locked or _stake >= station.get_max_stake()
+		_stake_label.text = "FREE" if free else "%d TKN" % _stake
+		_stake_label.add_theme_color_override("font_color",
+			MachineDrawing.TEAL if free else (MachineDrawing.ORANGE if _stake >= GameState.tokens and _stake > station.get_min_stake() else Color.WHITE))
+	var stake_text := "FREE SPIN" if free else "MIN %d TKN" % station.get_min_stake()
 	_info_label.text = "%s  |  CYCLES %d  |  BALANCE %d TKN\n%s" % [
-		cost, station.spins_left, GameState.tokens, controls,
+		stake_text, station.spins_left, GameState.tokens, controls,
 	]
 
 
