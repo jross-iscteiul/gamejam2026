@@ -14,6 +14,26 @@ func _ready() -> void:
 	_run.call_deferred()
 
 
+func _test_god_mode() -> void:
+	GameState.reset_run() # practice: not leaderboard-eligible
+	GameState.tokens = 4
+	GameState.energy = 30
+	_check(GameState.toggle_god_mode() and GameState.god_mode, "god mode turns on in practice")
+	_check(GameState.energy == GameState.MAX_ENERGY and GameState.tokens == GameState.GOD_TOKENS, "god mode fills energy and tokens")
+	GameState.add_energy(-40)
+	GameState._process(5.0)
+	_check(GameState.energy == GameState.MAX_ENERGY and GameState.jarvis_enabled, "god mode energy never drains")
+	_check(GameState.spend_tokens(50) and GameState.tokens == GameState.GOD_TOKENS, "god mode tokens never run out")
+	GameState.add_tokens(5)
+	_check(GameState.toggle_god_mode() and not GameState.god_mode and GameState.tokens == 9, "leaving god mode restores the real balance plus pickups")
+	GameState.run_clock.eligible = true
+	_check(not GameState.toggle_god_mode() and not GameState.god_mode, "god mode is refused in a leaderboard-eligible run")
+	GameState.run_clock.eligible = false
+	GameState.set_god_mode(true)
+	GameState.reset_run()
+	_check(not GameState.god_mode and GameState.tokens == 0, "reset turns god mode off")
+
+
 func _check(condition: bool, message: String) -> void:
 	print(("PASS " if condition else "FAIL ") + message)
 	if not condition:
@@ -91,6 +111,7 @@ func _test_economy() -> void:
 	GameState.player_died.emit()
 	_check(GameState.energy == 90, "death never lowers JARVIS's energy")
 	_deaths -= 2 # these two synthetic deaths must not count in the real death checks below
+	_test_god_mode()
 	GameState.begin_level(1)
 	GameState.energy = 100
 	GameState._process(10)
@@ -248,6 +269,21 @@ func _test_live_gameplay() -> void:
 	Input.parse_input_event(space)
 	await _frames(1)
 	_check(GameState.tokens == 3 and not hud._feed.has_focus(), "Space after feeding does not feed again")
+	var god_key := InputEventAction.new()
+	god_key.action = &"god_mode"
+	god_key.pressed = true
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	_check(GameState.god_mode and hud._tokens.text == "TOKENS INF" and hud._status.text.contains("GOD MODE"), "G toggles god mode in a practice level and the HUD shows it")
+	god_key.pressed = false
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	god_key.pressed = true
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	god_key.pressed = false
+	Input.parse_input_event(god_key)
+	_check(not GameState.god_mode and hud._tokens.text == "TOKENS 003", "G again turns god mode off and restores the token count")
 	GameState.boss_health_changed.emit(60, 100)
 	_check(hud._boss_box.visible and hud._boss.value == 60, "boss bar consumes existing health signal")
 	GameState.boss_defeated.emit()
