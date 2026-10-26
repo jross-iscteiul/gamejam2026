@@ -1,6 +1,7 @@
 @tool
 extends Hazard
-## Liquid pool: lava (instant death) or toxic waste (1 HP each time invincibility runs out).
+## Liquid pool: lava (instant death) or toxic waste (`damage` HP each time invincibility runs out;
+## toxic.tscn uses 2 and draws in front of the player, who wades through it).
 ## Origin = top-left of the pool; the generator sets `size` from a run of map cells.
 
 enum Kind { LAVA, TOXIC }
@@ -15,13 +16,16 @@ const COLORS := {
 @export var size := Vector2(128, 32)
 ## Off = looks only (pit bottoms, where the Pit trigger already resets the player).
 @export var damaging := true
+## HP per hit for toxic waste (lava always kills).
+@export var damage := 1.0
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint() or not damaging:
 		return
 	var liquid := Vector2(size.x - 4.0, size.y - SURFACE)
-	make_hitbox(rect(liquid), Vector2(size.x / 2.0, SURFACE + liquid.y / 2.0), self, kind == Kind.LAVA)
+	var hitbox := make_hitbox(rect(liquid), Vector2(size.x / 2.0, SURFACE + liquid.y / 2.0), self, kind == Kind.LAVA)
+	hitbox.damage = damage
 
 
 func _draw() -> void:

@@ -99,6 +99,9 @@ func _physics_process(_delta: float) -> void:
 			_place(Vector2(208, -20))
 		[0, 70]:
 			_check(hits == 2, "toxic: 2 hits in 1.0 s while standing in it (got %d)" % hits)
+			_check(health.max_health - health.current == 4.0, "toxic: 2 damage per hit (lost %d HP)" % (health.max_health - health.current))
+			var toxic := get_children().filter(func(n: Node) -> bool: return n.scene_file_path == TOXIC.resource_path)[0] as Node2D
+			_check(toxic.z_index > player.z_index, "toxic: drawn in front of the player")
 			_place(Vector2(600, -20))
 		[0, 75]: # overlaps update one physics step after a teleport
 			hits = 0
