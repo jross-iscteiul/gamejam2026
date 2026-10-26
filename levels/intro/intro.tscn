@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://levels/intro/intro.gd" id="1_intro"]
 [ext_resource type="AudioStream" path="res://assets/audio/music/cyberpunk_street.ogg" id="2_music"]
-[ext_resource type="Script" path="res://levels/shared/level_background.gd" id="3_bg"]
+[ext_resource type="Script" path="res://levels/intro/projector_backdrop.gd" id="3_bg"]
 [ext_resource type="TileSet" path="res://levels/shared/tileset.tres" id="4_tiles"]
 [ext_resource type="PackedScene" path="res://objects/token/token_small.tscn" id="5_token"]
 [ext_resource type="PackedScene" path="res://characters/jarvis/jarvis.tscn" id="6_jarvis"]
@@ -30,7 +30,6 @@ music = ExtResource("2_music")
 
 [node name="Background" type="CanvasLayer" parent="."]
 script = ExtResource("3_bg")
-art = "intro_pixel"
 
 [node name="Tiles" type="TileMapLayer" parent="."]
 tile_set = ExtResource("4_tiles")
