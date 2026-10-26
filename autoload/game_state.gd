@@ -21,6 +21,8 @@ const MAX_ENERGY := 100.0
 const ABILITY_COSTS := {&"dash": 1, &"shield": 2, &"boost_jump": 3}
 const FEED_COST: int = 3
 const FEED_ENERGY: float = 25.0
+## On each player death JARVIS comes back with at least this much energy (revived if offline).
+const DEATH_ENERGY: float = 75.0
 const ENERGY_DRAIN := [0.8, 1.2, 1.6, 2.0] # energy per active gameplay second
 const KILL_DOUBT_CHANCE := [0.10, 0.25, 0.40, 0.60]
 
@@ -155,3 +157,5 @@ func _on_player_died() -> void:
 	run_clock.record_death()
 	if jarvis_enabled:
 		jarvis_say.emit(Dialogue.get_line("death", current_level), "smug")
+	if not jarvis_hostile and energy < DEATH_ENERGY:
+		energy = DEATH_ENERGY

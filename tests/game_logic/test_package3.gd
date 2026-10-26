@@ -84,6 +84,13 @@ func _test_economy() -> void:
 	var balance := GameState.tokens
 	_check(not GameState.feed_jarvis() and GameState.tokens == balance, "feeding at full energy never wastes tokens")
 	_check(GameState.kill_doubt_chance(4) > GameState.kill_doubt_chance(1), "kill doubt grows across levels")
+	GameState.energy = 0
+	GameState.player_died.emit()
+	_check(GameState.jarvis_enabled and GameState.energy == GameState.DEATH_ENERGY, "death brings JARVIS back at 75% energy")
+	GameState.energy = 90
+	GameState.player_died.emit()
+	_check(GameState.energy == 90, "death never lowers JARVIS's energy")
+	_deaths -= 2 # these two synthetic deaths must not count in the real death checks below
 	GameState.begin_level(1)
 	GameState.energy = 100
 	GameState._process(10)
