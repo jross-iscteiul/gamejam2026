@@ -2,7 +2,7 @@ extends Node
 ## Package 3 economy and event bus. Existing team interfaces stay stable.
 
 signal tokens_changed(tokens: int)
-signal trust_changed(trust: float)
+signal energy_changed(energy: float)
 signal enemy_killed(enemy: Node, killer: Node)
 signal player_died
 signal player_respawned
@@ -17,11 +17,11 @@ signal token_collected(value: int)
 signal ability_used(ability: StringName, cost: int)
 signal run_finished(result: Dictionary)
 
-const MAX_TRUST := 100.0
+const MAX_ENERGY := 100.0
 const ABILITY_COSTS := {&"dash": 1, &"shield": 2, &"boost_jump": 3}
 const FEED_COST: int = 3
-const FEED_TRUST: float = 25.0
-const TRUST_DECAY := [0.8, 1.2, 1.6, 2.0] # trust per active gameplay second
+const FEED_ENERGY: float = 25.0
+const ENERGY_DRAIN := [0.8, 1.2, 1.6, 2.0] # energy per active gameplay second
 const KILL_DOUBT_CHANCE := [0.10, 0.25, 0.40, 0.60]
 
 var tokens: int = 0:
@@ -29,11 +29,11 @@ var tokens: int = 0:
 		tokens = maxi(value, 0)
 		tokens_changed.emit(tokens)
 
-var trust: float = MAX_TRUST:
+var energy: float = MAX_ENERGY:
 	set(value):
 		var was_enabled := jarvis_enabled
-		trust = clampf(value, 0.0, MAX_TRUST)
-		trust_changed.emit(trust)
+		energy = clampf(value, 0.0, MAX_ENERGY)
+		energy_changed.emit(energy)
 		if was_enabled != jarvis_enabled:
 			jarvis_enabled_changed.emit(jarvis_enabled)
 
@@ -46,7 +46,7 @@ var jarvis_hostile: bool = false:
 			jarvis_enabled_changed.emit(jarvis_enabled)
 var jarvis_enabled: bool:
 	get:
-		return trust > 0.0 and not jarvis_hostile
+		return energy > 0.0 and not jarvis_hostile
 
 var gameplay_active: bool = false
 var _rng := RandomNumberGenerator.new()
@@ -69,7 +69,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	run_clock.advance(delta, gameplay_active)
 	if gameplay_active and not jarvis_hostile and current_level in range(1, 5):
-		add_trust(-TRUST_DECAY[current_level - 1] * delta)
+		add_energy(-ENERGY_DRAIN[current_level - 1] * delta)
 
 
 func reset_run() -> void:
@@ -79,7 +79,7 @@ func reset_run() -> void:
 	jarvis_hostile = false
 	current_level = 0
 	tokens = 0
-	trust = MAX_TRUST
+	energy = MAX_ENERGY
 
 
 func begin_level(level: int) -> void:
@@ -112,14 +112,14 @@ func spend_tokens(n: int) -> bool:
 	return true
 
 
-func add_trust(n: float) -> void:
-	trust += n
+func add_energy(n: float) -> void:
+	energy += n
 
 
 func feed_jarvis() -> bool:
-	if jarvis_hostile or trust >= MAX_TRUST or not spend_tokens(FEED_COST):
+	if jarvis_hostile or energy >= MAX_ENERGY or not spend_tokens(FEED_COST):
 		return false
-	add_trust(FEED_TRUST)
+	add_energy(FEED_ENERGY)
 	return true
 
 

@@ -31,8 +31,8 @@ func _step(_d: float) -> bool:
 		start = p.global_position
 	t += 1
 	if t == 1: # reset onto the floor, facing right
-		# Double jump and dash are paid with JARVIS's online %; keep it full for every step.
-		GameState.trust = GameState.MAX_TRUST
+		# Double jump and dash are paid with JARVIS's energy; keep it full for every step.
+		GameState.energy = GameState.MAX_ENERGY
 		p.global_position = start
 		p.velocity = Vector2.ZERO
 		p.facing = 1

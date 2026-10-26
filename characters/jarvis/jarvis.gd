@@ -1,7 +1,7 @@
 class_name Jarvis
 extends Node2D
 ## Package 2 sidekick. Follows the player, sprays shots ahead and sells abilities: it reads the
-## dash / double jump / shield input, pays with its online % (GameState.trust) and calls the Player API. Later steps add
+## dash / double jump / shield input, pays with its energy (GameState.energy) and calls the Player API. Later steps add
 ## speech bubble and sounds. Moods (normal/happy/annoyed/furious) show as the eye colour on the
 ## drone's screen (see Body) and the bubble border.
 
@@ -30,33 +30,33 @@ extends Node2D
 	Vector4(-60.0, 20.0, 80.0, 0.0), # front and a bit up, densest straight ahead
 	Vector4(20.0, 70.0, 10.0, 25.0), # a bit down, densest near the front
 ]
-@export var min_fire_rate: float = 0.5 # shots per second when trust is almost empty
-@export var max_fire_rate: float = 2.5 # shots per second at full trust
+@export var min_fire_rate: float = 0.5 # shots per second when energy is almost empty
+@export var max_fire_rate: float = 2.5 # shots per second at full energy
 
 @export_group("Abilities")
 @export var double_tap_window_msec: int = 250 # double-tap move_left/right to dash
 @export var shield_bill_interval: float = 1.0 # seconds paid by each shield charge
-## Online % (trust) each ability costs; shield cost is per shield_bill_interval.
-@export var trust_costs: Dictionary[StringName, float] = {&"dash": 5.0, &"boost_jump": 8.0, &"shield": 4.0}
+## Online % (energy) each ability costs; shield cost is per shield_bill_interval.
+@export var energy_costs: Dictionary[StringName, float] = {&"dash": 5.0, &"boost_jump": 8.0, &"shield": 4.0}
 
 @export_group("Talk")
-@export var low_trust_threshold: float = 25.0 # complains once when the online bar drops below this
+@export var low_energy_threshold: float = 25.0 # complains once when the energy bar drops below this
 @export var idle_line_min_seconds: float = 20.0
 @export var idle_line_max_seconds: float = 40.0
 @export var denied_line_cooldown: float = 4.0 # don't nag on every refused press
 
 @export_group("Mood")
-## Resting mood follows the online bar: happy above happy_trust, furious below furious_trust,
-## annoyed below annoyed_trust, normal in between. While talking, the line's mood wins.
-@export var happy_trust: float = 75.0
-@export var annoyed_trust: float = 40.0
-@export var furious_trust: float = 15.0
+## Resting mood follows the energy bar: happy above happy_energy, furious below furious_energy,
+## annoyed below annoyed_energy, normal in between. While talking, the line's mood wins.
+@export var happy_energy: float = 75.0
+@export var annoyed_energy: float = 40.0
+@export var furious_energy: float = 15.0
 ## Other mood names (from GameState / Dialogue callers) mapped onto JARVIS's moods.
 @export var mood_aliases: Dictionary[String, String] = {
 	"normal": "neutral", "smug": "happy", "sad": "annoyed", "angry": "furious"}
 
 @export_group("Offline")
-## At trust 0 JARVIS powers down: sinks toward the player's waist, droops nose-down, bobs
+## At energy 0 JARVIS powers down: sinks toward the player's waist, droops nose-down, bobs
 ## weakly, the rotor spins down and the screen goes dark. Feeding powers him back up.
 @export var offline_sink: float = 18.0 # pixels lower than the normal follow height
 @export var offline_droop_degrees: float = 25.0
@@ -90,7 +90,7 @@ const MOODS: PackedStringArray = ["neutral", "happy", "annoyed", "furious"]
 
 signal mood_changed(mood: String)
 signal ability_activated(ability: StringName)
-signal ability_denied(ability: StringName) # not enough online % or JARVIS offline
+signal ability_denied(ability: StringName) # not enough energy or JARVIS offline
 
 var player: Player
 var mood: String = "neutral"
@@ -106,7 +106,7 @@ var _last_tap_direction: int = 0
 var _last_tap_time_msec: int = 0
 var _shield_paid_left: float = 0.0
 var _boosted_this_air: bool = false
-var _low_trust_warned: bool = false
+var _low_energy_warned: bool = false
 var _idle_left: float = 0.0
 var _denied_cooldown_left: float = 0.0
 var _assist_left: float = 0.0
@@ -125,9 +125,9 @@ func _ready() -> void:
 	_rng.randomize()
 	GameState.jarvis_enabled_changed.connect(_on_enabled_changed)
 	GameState.jarvis_say.connect(_on_jarvis_say)
-	GameState.trust_changed.connect(_on_trust_changed)
+	GameState.energy_changed.connect(_on_energy_changed)
 	ability_denied.connect(_on_ability_denied)
-	_low_trust_warned = GameState.trust < low_trust_threshold
+	_low_energy_warned = GameState.energy < low_energy_threshold
 	_reset_idle()
 	power = 1.0 if GameState.jarvis_enabled else 0.0
 	_find_player()
@@ -219,15 +219,15 @@ func _pose_body() -> void:
 			body.scale.y = 1.0
 
 
-## Resting mood from the online bar (or "offline" while disabled).
+## Resting mood from the energy bar (or "offline" while disabled).
 func base_mood() -> String:
 	if not GameState.jarvis_enabled:
 		return "offline"
-	if GameState.trust < furious_trust:
+	if GameState.energy < furious_energy:
 		return "furious"
-	if GameState.trust < annoyed_trust:
+	if GameState.energy < annoyed_energy:
 		return "annoyed"
-	if GameState.trust >= happy_trust:
+	if GameState.energy >= happy_energy:
 		return "happy"
 	return "neutral"
 
@@ -276,15 +276,15 @@ func _on_ability_denied(_ability: StringName) -> void:
 	if _denied_cooldown_left > 0.0 or not GameState.jarvis_enabled:
 		return
 	_denied_cooldown_left = denied_line_cooldown
-	say_line("ability_denied", "furious" if GameState.trust < annoyed_trust else "annoyed")
+	say_line("ability_denied", "furious" if GameState.energy < annoyed_energy else "annoyed")
 
 
-func _on_trust_changed(trust: float) -> void:
-	if trust >= low_trust_threshold:
-		_low_trust_warned = false
-	elif not _low_trust_warned and GameState.jarvis_enabled:
-		_low_trust_warned = true
-		say_line("low_trust", "annoyed")
+func _on_energy_changed(energy: float) -> void:
+	if energy >= low_energy_threshold:
+		_low_energy_warned = false
+	elif not _low_energy_warned and GameState.jarvis_enabled:
+		_low_energy_warned = true
+		say_line("low_energy", "annoyed")
 
 
 func _physics_process(delta: float) -> void:
@@ -346,22 +346,22 @@ func _handle_shield_input(delta: float) -> void:
 		player.set_shield(active)
 
 
-## Pays the ability's trust cost. Allowed while online with at least that much trust, so the
+## Pays the ability's energy cost. Allowed while online with at least that much energy, so the
 ## last purchase can take JARVIS to exactly 0 (offline).
 func _buy(ability: StringName) -> bool:
-	var cost: float = trust_costs.get(ability, 0.0)
-	if not GameState.jarvis_enabled or GameState.trust < cost:
+	var cost: float = energy_costs.get(ability, 0.0)
+	if not GameState.jarvis_enabled or GameState.energy < cost:
 		ability_denied.emit(ability)
 		return false
-	GameState.add_trust(-cost)
+	GameState.add_energy(-cost)
 	GameState.ability_used.emit(ability, ceili(cost))
 	ability_activated.emit(ability)
 	return true
 
 
-## Shots per second; follows the trust ("online") bar from min_fire_rate to max_fire_rate.
+## Shots per second; follows the energy ("online") bar from min_fire_rate to max_fire_rate.
 func fire_rate() -> float:
-	return lerpf(min_fire_rate, max_fire_rate, clampf(GameState.trust / GameState.MAX_TRUST, 0.0, 1.0))
+	return lerpf(min_fire_rate, max_fire_rate, clampf(GameState.energy / GameState.MAX_ENERGY, 0.0, 1.0))
 
 
 func _shoot(delta: float) -> void:
