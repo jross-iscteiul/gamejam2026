@@ -5,18 +5,34 @@ extends CharacterBody2D
 const SKIN: PlayerSkin = preload("res://characters/player/robot.tres")
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const DROP := preload("res://objects/token/token_small.tscn")
+const PAINT_SHADER := preload("res://ui/placeholder_enemy/robot_paint.gdshader")
+
+## Paint jobs over the same robot art: plate, shading, dark shading. YELLOW is the art as drawn.
+enum Paint { RED_STAR, BLUE, GREEN, PURPLE, YELLOW }
+const PAINTS := {
+	Paint.RED_STAR: [Color("e63946"), Color("b0202c"), Color("6e0d14")],
+	Paint.BLUE: [Color("4d8dff"), Color("2a5fc4"), Color("163a80")],
+	Paint.GREEN: [Color("5cc977"), Color("2f8a4e"), Color("1a5230")],
+	Paint.PURPLE: [Color("b072ff"), Color("7a3fc8"), Color("4a2180")],
+	Paint.YELLOW: [Color("ffe119"), Color("ff6d05"), Color("ff0000")],
+}
+## Where the star sits on the head, in sprite frame pixels (frames are 32x32, facing right).
+const STAR_SPOT := Vector2(13.5, 13.5)
 
 @export var patrol_distance: float = 64.0
 @export var speed: float = 24.0
 @export var fire_interval: float = 2.0
 @export var detection_range: float = 240.0
 @export var hit_points: float = 3.0
+## Paint job; -1 picks one at random so a crowd of minions comes in mixed colours.
+@export_enum("Random:-1", "Red with star:0", "Blue:1", "Green:2", "Purple:3", "Yellow:4") var paint: int = -1
 
 var _home: float
 var _direction: float = -1.0
 var _shot_left: float = 1.2
 var _dead: bool = false
 var _assembled: bool = false # bolted onto the giant: still a live unit, but no longer its own
+var _star: Node2D
 @onready var _health: Health = $Health
 @onready var _sprite: AnimatedSprite2D = $Sprite
 
@@ -31,6 +47,7 @@ func _ready() -> void:
 	_health.damaged.connect(_flash)
 	_sprite.sprite_frames = SKIN.sprite_frames
 	_sprite.play(&"run")
+	_apply_paint()
 	_shot_left += fposmod(position.x * 0.01, 1.0)
 
 
@@ -47,9 +64,45 @@ func _physics_process(delta: float) -> void:
 	velocity.x = _direction * speed
 	move_and_slide()
 	_sprite.flip_h = _direction < 0.0
+	if _star != null:
+		_star.position = _star_position()
 	_shot_left -= delta
 	if _shot_left <= 0.0:
 		_try_shoot()
+
+
+func _apply_paint() -> void:
+	if paint < 0:
+		paint = randi() % PAINTS.size()
+	var colors: Array = PAINTS[paint]
+	var material := ShaderMaterial.new()
+	material.shader = PAINT_SHADER
+	material.set_shader_parameter("main_color", colors[0])
+	material.set_shader_parameter("shade_color", colors[1])
+	material.set_shader_parameter("dark_color", colors[2])
+	_sprite.material = material
+	if paint == Paint.RED_STAR:
+		# A child of the sprite, so it fades, flashes and keels over with the body.
+		_star = Node2D.new()
+		_star.name = "Star"
+		_star.position = _star_position()
+		_star.draw.connect(func() -> void:
+			_star.draw_colored_polygon(_star_points(2.8, 1.2), Color.WHITE))
+		_sprite.add_child(_star)
+
+
+## The sprite isn't centered and flip_h doesn't move children, so mirror the spot by hand.
+func _star_position() -> Vector2:
+	return Vector2(32.0 - STAR_SPOT.x, STAR_SPOT.y) if _sprite.flip_h else STAR_SPOT
+
+
+func _star_points(outer: float, inner: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 10:
+		var radius := outer if i % 2 == 0 else inner
+		var angle := -PI / 2.0 + i * PI / 5.0
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+	return points
 
 
 func _try_shoot() -> void:
