@@ -23,7 +23,7 @@ func _check(cond: bool, msg: String) -> void:
 	if not cond: get_tree().quit(1)
 
 func _start() -> void:
-	get_tree().change_scene_to_file("res://ui/intro/intro.tscn")
+	get_tree().change_scene_to_file("res://levels/intro/intro.tscn")
 
 func _step(_d: float) -> bool:
 	wait += 1
@@ -31,8 +31,8 @@ func _step(_d: float) -> bool:
 	wait = 0
 	var s := get_tree().current_scene
 	match step:
-		0: _check(s.name == "Intro", "intro loads"); _key()
-		1: _check(s.scene_file_path.ends_with("level_01.tscn"), "any key -> level 1"); _goto("Door")
+		0: _check(s.name == "Intro", "intro loads"); _press("pause")
+		1: _check(s.scene_file_path.ends_with("level_01.tscn"), "Esc skips intro -> level 1"); _goto("Door")
 		2: _press("interact")
 		3: _check(s.scene_file_path.ends_with("level_02.tscn"), "L1 door -> level 2"); _goto("Door")
 		4: _press("interact")

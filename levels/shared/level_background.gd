@@ -8,11 +8,12 @@ const SETS := {
 	"city_skyline": ["back.png", "buildings.png", "front.png"],
 	"neon_night": ["far_buildings.png", "back_buildings.png", "foreground.png"],
 	"neon_street": ["back.png", "middle.png", "foreground.png"],
+	"intro_pixel": ["background.png"], # downscaled assets/art/intro/background.png
 }
 ## Horizontal scroll per layer as a fraction of camera movement (far -> near).
 const SCROLL := [0.04, 0.12, 0.25]
 
-@export_enum("city_skyline", "neon_night", "neon_street") var art := "city_skyline"
+@export_enum("city_skyline", "neon_night", "neon_street", "intro_pixel") var art := "city_skyline"
 @export var tint := Color.WHITE
 
 var _layers: Array[TextureRect] = []

@@ -267,7 +267,7 @@ Package 5 instances the other two into the level.
 
 ## Levels, intro and tooling (branch `feature/intro-and-levels`)
 
-- **Startup:** `ui/menus/main_menu.tscn`; New Game enters the existing `ui/intro/intro.tscn` scrolling text, then level 1.
+- **Startup:** `ui/menus/main_menu.tscn`; New Game enters the playable intro `levels/intro/intro.tscn` (pixel-font crawl, collect tokens, wake JARVIS, door to level 1; Esc/P skips), then level 1.
 - **Levels 1-4:** `levels/level_XX/level_XX.tscn`, generated from the ASCII maps in `levels/build_levels.gd` (legend at the top of that file). Shared level pieces (door, lever, gate, checkpoint, boss trigger, camera zone, tileset) live in `levels/shared/`; moving platforms in `objects/platforms/`, pits in `objects/hazards/`.
   - Rebuild: `godot --headless --path . res://levels/build_levels.tscn`. **This overwrites the four level scenes**, so either edit the ASCII maps or edit the scenes in the editor, not both.
   - Package 3's `level_XX_entities.tscn` scenes are instanced in all four levels; Package 6's extras scenes are still pending.

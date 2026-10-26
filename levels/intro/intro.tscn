@@ -1,0 +1,150 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/intro/intro.gd" id="1_intro"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/cyberpunk_street.ogg" id="2_music"]
+[ext_resource type="Script" path="res://levels/shared/level_background.gd" id="3_bg"]
+[ext_resource type="TileSet" path="res://levels/shared/tileset.tres" id="4_tiles"]
+[ext_resource type="PackedScene" path="res://objects/token/token_small.tscn" id="5_token"]
+[ext_resource type="PackedScene" path="res://characters/jarvis/jarvis.tscn" id="6_jarvis"]
+[ext_resource type="PackedScene" path="res://levels/shared/door.tscn" id="7_door"]
+[ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="8_player"]
+[ext_resource type="FontFile" path="res://ui/shared/press_start_2p.ttf" id="10_font"]
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_left"]
+normal = Vector2(1, 0)
+
+[sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_right"]
+normal = Vector2(-1, 0)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_trigger"]
+size = Vector2(16, 160)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tokens"]
+size = Vector2(16, 160)
+
+[node name="Intro" type="Node2D"]
+script = ExtResource("1_intro")
+number = 0
+sky = Color(0.05, 0.12, 0.35, 1)
+music = ExtResource("2_music")
+
+[node name="Background" type="CanvasLayer" parent="."]
+script = ExtResource("3_bg")
+art = "intro_pixel"
+
+[node name="Tiles" type="TileMapLayer" parent="."]
+tile_set = ExtResource("4_tiles")
+
+[node name="Bounds" type="StaticBody2D" parent="."]
+
+[node name="Left" type="CollisionShape2D" parent="Bounds"]
+shape = SubResource("WorldBoundaryShape2D_left")
+
+[node name="Right" type="CollisionShape2D" parent="Bounds"]
+position = Vector2(1536, 0)
+shape = SubResource("WorldBoundaryShape2D_right")
+
+[node name="Token1" parent="." instance=ExtResource("5_token")]
+position = Vector2(304, 268)
+
+[node name="Token2" parent="." instance=ExtResource("5_token")]
+position = Vector2(400, 268)
+
+[node name="Token3" parent="." instance=ExtResource("5_token")]
+position = Vector2(496, 268)
+
+[node name="TokensTrigger" type="Area2D" parent="."]
+position = Vector2(240, 208)
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TokensTrigger"]
+shape = SubResource("RectangleShape2D_tokens")
+
+[node name="Jarvis" parent="." instance=ExtResource("6_jarvis")]
+position = Vector2(752, 278)
+dormant = true
+
+[node name="JarvisTrigger" type="Area2D" parent="."]
+position = Vector2(712, 208)
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="JarvisTrigger"]
+shape = SubResource("RectangleShape2D_trigger")
+
+[node name="Door" parent="." instance=ExtResource("7_door")]
+position = Vector2(1424, 272)
+next_level = "res://levels/level_01/level_01.tscn"
+
+[node name="Player" parent="." instance=ExtResource("8_player")]
+position = Vector2(112, 272)
+
+[node name="CrawlLayer" type="CanvasLayer" parent="."]
+layer = -5
+
+[node name="Root" type="Control" parent="CrawlLayer"]
+modulate = Color(1, 1, 1, 0.85)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Crawl" type="Label" parent="CrawlLayer/Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -640.0
+offset_right = 640.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.3, 1)
+theme_override_colors/font_shadow_color = Color(0.07, 0.11, 0.18, 1)
+theme_override_constants/shadow_offset_x = 4
+theme_override_constants/shadow_offset_y = 4
+theme_override_constants/line_spacing = 16
+theme_override_fonts/font = ExtResource("10_font")
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="HintLayer" type="CanvasLayer" parent="."]
+layer = 11
+
+[node name="Hint" type="Label" parent="HintLayer"]
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -128.0
+offset_right = 400.0
+offset_bottom = -96.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.41, 0.88, 0.82, 1)
+theme_override_colors/font_shadow_color = Color(0.07, 0.11, 0.18, 1)
+theme_override_constants/shadow_offset_x = 3
+theme_override_constants/shadow_offset_y = 3
+theme_override_fonts/font = ExtResource("10_font")
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+
+[node name="SkipHint" type="Label" parent="HintLayer"]
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -480.0
+offset_top = 32.0
+offset_right = -32.0
+offset_bottom = 56.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.64, 0.72, 0.78, 1)
+theme_override_fonts/font = ExtResource("10_font")
+theme_override_font_sizes/font_size = 16
+text = "ESC: SKIP INTRO"
+horizontal_alignment = 2
+
+[node name="TouchLayer" type="CanvasLayer" parent="."]
+layer = 20
