@@ -1,8 +1,8 @@
-[gd_resource type="TileSet" format=3]
+[gd_resource type="TileSet" format=3 uid="uid://bc3ujjrprhib5"]
 
-[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1.png" id="1_w5q77"]
-[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1B.png" id="2_w4onp"]
-[ext_resource type="Texture2D" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1C.png" id="3_w7vw4"]
+[ext_resource type="Texture2D" uid="uid://dkrppqediyg4f" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1.png" id="1_w5q77"]
+[ext_resource type="Texture2D" uid="uid://nsl5vvm71ber" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1B.png" id="2_w4onp"]
+[ext_resource type="Texture2D" uid="uid://buc4usyeaevgv" path="res://assets/art/industrial_tileset/tiles/1_Industrial_Tileset_1C.png" id="3_w7vw4"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_x5g28"]
 texture = ExtResource("1_w5q77")
