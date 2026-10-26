@@ -1,6 +1,6 @@
 extends "res://levels/shared/level.gd"
-## Playable intro: a pixel-font story crawl scrolls behind the level while the player walks a flat
-## floor over the pixelized intro art, past a few tokens, up to JARVIS lying powered down.
+## Playable intro: the player walks a flat floor over the pixelized intro art, past a few
+## tokens, up to JARVIS lying powered down. The optional story crawl is disabled by default.
 ## Reaching him plays a tap-through wake-up dialogue; afterwards the door leads to level 1.
 ## Esc / P skips straight to level 1. Energy is infinite here (tokens stay real, so the free
 ## tokens still power JARVIS up); god mode is not available.
@@ -42,6 +42,7 @@ const JARVIS_LINES := [
 @export var floor_origin := Vector2i(0, 9)
 @export var floor_size := Vector2i(48, 3)
 @export var wake_seconds: float = 1.2 # JARVIS powers up and flies over before he talks
+@export var show_story_crawl: bool = false
 
 var _crawl_y: float = 0.0
 var _waiting: bool = false
@@ -83,6 +84,8 @@ func _ready() -> void:
 	blink.tween_property(hint, "modulate:a", 1.0, 0.5)
 	_crawl_y = get_viewport().get_visible_rect().size.y # start just below the screen
 	crawl.position.y = _crawl_y
+	crawl_layer.visible = show_story_crawl
+	set_process(show_story_crawl)
 
 
 ## Same 9-slice picks as build_levels.gd for a plain rectangle of tiles.

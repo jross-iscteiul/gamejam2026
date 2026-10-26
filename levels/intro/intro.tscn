@@ -82,6 +82,7 @@ position = Vector2(112, 272)
 
 [node name="CrawlLayer" type="CanvasLayer" parent="."]
 layer = -5
+visible = false
 
 [node name="Root" type="Control" parent="CrawlLayer"]
 modulate = Color(1, 1, 1, 0.85)
