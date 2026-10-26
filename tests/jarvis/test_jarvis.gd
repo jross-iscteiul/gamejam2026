@@ -8,6 +8,7 @@ var _bob_max := -INF
 var _home := Vector2.ZERO
 var _activated: Array[StringName] = []
 var _denied: Array[StringName] = []
+var _platform_at := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -33,6 +34,7 @@ func _physics_process(_delta: float) -> void:
 		_check(jarvis != null, "JARVIS spawns in level 1")
 		if jarvis == null:
 			return _finish()
+		_check(not jarvis.get_node("SpeechBubble").visible, "JARVIS spawns quietly (no back-online line)")
 		_check(jarvis.global_position.distance_to(player.global_position) < 60.0, "JARVIS starts next to the player")
 		_home = player.global_position
 		var look: Node2D = jarvis.get_node("Body")
@@ -117,6 +119,10 @@ func _abilities(jarvis: Node2D, p: Player) -> void:
 		242:
 			Input.action_release("dash")
 			_check(p._dash_time_left > 0.0 and is_equal_approx(GameState.trust, 100.0 - dash), "dash key costs online %")
+			var behind := (jarvis.global_position.x - p.global_position.x) * p.facing
+			_check(jarvis.assist == &"dash" and behind < -8.0 and absf(jarvis.global_position.y - p.global_position.y) < 8.0,
+				"JARVIS pushes the dash from behind the player")
+			_check(jarvis.assist_fx.kind == &"dash" and absf(absf(jarvis.body.rotation) - PI / 2.0) < 0.01, "dash pose turns JARVIS's thruster backwards")
 		270: Input.action_press("move_right")
 		272: Input.action_release("move_right")
 		276: Input.action_press("move_right")
@@ -136,7 +142,17 @@ func _abilities(jarvis: Node2D, p: Player) -> void:
 			Input.action_release("jump")
 			_check(is_equal_approx(GameState.trust, 100.0 - boost) and p.velocity.y < 0.0 and _activated.has(&"boost_jump"),
 				"ground jump is free, double jump costs online %")
+			_check(jarvis.assist == &"boost" and jarvis.global_position.y > p.global_position.y + 10.0, "JARVIS is under the player for the double jump")
+			_check(jarvis.assist_fx.kind == &"boost", "JARVIS projects a platform for the double jump")
+			_platform_at = jarvis.assist_fx._platform_world
+			var forward: float = (_platform_at.x - p.global_position.x) * p.facing
+			_check(is_equal_approx(forward, jarvis.boost_forward_shift), "platform is shifted forward under the character drawing")
 		340: Input.action_press("jump")
+		360:
+			_check(jarvis.assist == &"" and jarvis.assist_fx.kind == &"boost" and jarvis.assist_fx._platform_world == _platform_at,
+				"platform lingers in place after JARVIS leaves")
+		372:
+			_check(jarvis.assist_fx.kind == &"", "platform disappears 0.2 s after JARVIS's pose")
 		342:
 			_check(is_equal_approx(GameState.trust, 100.0 - boost) and _activated.count(&"boost_jump") == 1, "only one double jump per airtime")
 			Input.action_release("jump")
@@ -160,9 +176,13 @@ func _abilities(jarvis: Node2D, p: Player) -> void:
 				"holding shield pays the first second and shows the bubble")
 		506:
 			_check(p.shielded and is_equal_approx(GameState.trust, 1.0), "held shield is billed again each second")
+			_check(jarvis.assist == &"shield" and absf(jarvis.global_position.x - p.global_position.x) < 3.0 \
+				and jarvis.global_position.y < p.global_position.y - 30.0 and jarvis.assist_fx.kind == &"shield",
+				"JARVIS hovers over the player projecting the shield")
 		565:
 			_check(not p.shielded and not p._shield_bubble.visible and GameState.jarvis_enabled,
 				"shield drops when the next second can't be paid")
+			_check(jarvis.assist == &"" and jarvis.assist_fx.kind == &"", "JARVIS leaves the shield pose when it drops")
 		566:
 			_check(is_equal_approx(GameState.trust, 1.0), "unpaid shield does not retry every frame")
 			Input.action_release("shield")
