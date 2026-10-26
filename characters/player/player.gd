@@ -83,6 +83,8 @@ var _was_on_floor: bool = true
 var stunned: bool = false
 ## Set by cutscenes: no steering, jumping, shooting or JARVIS abilities.
 var input_locked: bool = false
+## Caught by a grab hand: frozen and hidden; the hazard moves the player and calls respawn().
+var held: bool = false
 
 var _skin: PlayerSkin
 var _move_direction: int = 1
@@ -135,6 +137,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if held:
+		return
 	if _is_dead:
 		velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
 		move_and_slide()
@@ -234,7 +238,7 @@ func dash(direction: Vector2) -> void:
 ## Hazard API: push the player (e.g. hammer hits). With stun, steering stays locked until it lands.
 ## Ignored while dead.
 func apply_knockback(impulse: Vector2, stun := false) -> void:
-	if _is_dead:
+	if _is_dead or held:
 		return
 	velocity = impulse
 	_dash_time_left = 0.0
@@ -244,7 +248,7 @@ func apply_knockback(impulse: Vector2, stun := false) -> void:
 
 ## Player API: true when dash() would start a dash right now (JARVIS checks before charging).
 func can_dash() -> bool:
-	return not _is_dead and not stunned and _dash_cooldown_left <= 0.0 and (is_on_floor() or _can_air_dash)
+	return not _is_dead and not held and not stunned and _dash_cooldown_left <= 0.0 and (is_on_floor() or _can_air_dash)
 
 
 ## Player API: last horizontal direction the player moved in (-1 or 1); the dash key dashes this way.
@@ -254,7 +258,7 @@ func move_direction() -> int:
 
 ## Player API: true when a jump press would jump right now without buying a boost_jump().
 func can_jump() -> bool:
-	return not _is_dead and (is_on_floor() or _air_jumps_left > 0)
+	return not _is_dead and not held and (is_on_floor() or _air_jumps_left > 0)
 
 
 ## Player API: one extra air jump, kept until used.
@@ -277,12 +281,36 @@ func set_touch_input(active: bool, aim_direction: Vector2, shooting: bool) -> vo
 	_touch_shooting = active and shooting
 
 
+## Hazard API: grab the player (see `held`). Returns false if it is already dead or held.
+## With keep_visible the player stays on screen, frozen, until conceal().
+func seize(keep_visible := false) -> bool:
+	if _is_dead or held:
+		return false
+	held = true
+	velocity = Vector2.ZERO
+	_dash_time_left = 0.0
+	collision_layer = 0
+	_hurtbox.set_deferred("monitoring", false)
+	_hurtbox.set_deferred("monitorable", false)
+	set_shield(false)
+	if not keep_visible:
+		conceal()
+	return true
+
+
+func conceal() -> void:
+	_body.visible = false
+	_gun_pivot.visible = false
+
+
 func respawn() -> void:
 	if _death_tween and _death_tween.is_running():
 		_death_tween.kill()
 	if not _is_dead:
 		GameState.player_died.emit()
 	_is_dead = false
+	held = false
+	_body.visible = true
 	_health.restore()
 	_health.grant_invulnerability(1.0)
 	set_shield(false)
