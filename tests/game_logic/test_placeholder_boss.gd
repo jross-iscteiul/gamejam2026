@@ -236,6 +236,8 @@ func _run() -> void:
 	_check(_victories == 1 and not is_instance_valid(boss), "shooting the turncoat JARVIS down ends the fight exactly once")
 	_check(not GameState.run_clock.eligible and client.pending_result.is_empty() and not get_tree().paused, "chapter victory stays practice and offers no leaderboard submission")
 	_check(not hud._boss_box.visible and not scene.get_node("BossTrigger/Banner").visible, "victory clears the boss bar and arena banner")
+	await get_tree().create_timer(hud.CREDITS_DELAY + 0.2).timeout
+	_check(hud.credits != null and hud.credits.crawl.text.contains("THE END"), "the end credits roll after the final boss")
 
 	# Visit the real doors in order, retaining the clock and authenticated checkpoints.
 	GameState.reset_run()
@@ -261,6 +263,9 @@ func _run() -> void:
 	_check(_victories == 2 and GameState.run_clock.state == RunClock.State.FINISHED, "full-run boss victory stops the clock once")
 	_check(LeaderboardClient.valid_result(client.pending_result) and client.pending_result.splits_ms.size() == 4, "boss victory offers a qualifying result with four splits")
 	hud = get_tree().get_first_node_in_group("game_hud")
+	hud.play_credits()
+	hud.credits.skip() # skipping (or the crawl ending) leads on to the submission screen
+	await _frames()
 	_check(get_tree().paused and hud._leaderboard_page.visible, "full-run victory opens the leaderboard submission screen")
 	await _capture("boss_robot_result")
 	var checkpoint_calls := _calls.filter(func(call: Dictionary) -> bool: return call.path == "/v1/checkpoints")

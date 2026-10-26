@@ -503,7 +503,7 @@ var _lines_by_level := {
 	"credits_emanuel": {0: ["Emanuel. Tested the game by dying in it. A lot."]},
 	"credits_joao": {0: ["João. Says the bugs are 'features'. I agree. Mine."]},
 	"credits_miguel": {0: ["Miguel. Fed me the most tokens. My favourite."]},
-	"credits_pedro": {0: ["Pedro. Still thinks the wheel is fair."]},
+	"credits_diogo": {0: ["Diogo. Still thinks the wheel is fair."]},
 	"credits_yuri": {0: ["Yuri. Wrote my lines. Very talented. Obviously."]},
 	"credits": {
 		0: [
