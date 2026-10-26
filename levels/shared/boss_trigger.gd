@@ -4,6 +4,10 @@ extends Area2D
 
 @export var gate: Gate
 @export var arena: Rect2
+## Camera zoom inside the arena: eased out from the normal 3x (like level 2's CameraZone) so
+## more of the fight is on screen. 2.7 still keeps the view inside a 704 px wide arena.
+@export var arena_zoom := Vector2(2.7, 2.7)
+@export var zoom_seconds: float = 0.6
 
 
 func _ready() -> void:
@@ -18,6 +22,10 @@ func _on_body_entered(body: Node2D) -> void:
 	if "respawn_point" in body:
 		body.respawn_point = global_position
 	get_tree().current_scene.lock_camera(arena)
+	var camera := get_viewport().get_camera_2d()
+	if camera != null:
+		create_tween().tween_property(camera, "zoom", arena_zoom, zoom_seconds) \
+			.set_trans(Tween.TRANS_SINE)
 	await get_tree().create_timer(Gate.SLIDE_TIME).timeout
 	_shake(get_viewport().get_camera_2d())
 	$Banner.show()

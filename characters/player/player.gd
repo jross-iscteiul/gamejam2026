@@ -44,6 +44,13 @@ static var selected_skin: int = -1
 @export_group("Death")
 @export_range(30.0, 110.0) var death_fall_angle_degrees: float = 82.0
 @export var death_fall_duration: float = 0.35
+## The death has to read at a glance: he is knocked up into the air, flashes, bursts into
+## sparks, lies on the floor for a moment and fades out before the respawn.
+@export var death_pop_velocity: float = 220.0
+@export var death_linger: float = 0.55 # time spent lying on the floor
+@export var death_fade: float = 0.25
+@export var death_shake: float = 6.0
+@export var death_spark_color: Color = Color(1.0, 0.3, 0.25)
 
 @export_group("Jump")
 @export var jump_velocity: float = 480.0
@@ -319,6 +326,7 @@ func respawn() -> void:
 	_hurtbox.set_deferred("monitorable", true)
 	_body.rotation = 0.0
 	_body.position = Vector2(0.0, FEET_Y)
+	_body.modulate = Color.WHITE
 	_gun_pivot.visible = true
 	_sprite.play(&"idle")
 	global_position = respawn_point
@@ -341,7 +349,8 @@ func take_damage(amount: float, source: Node = null) -> void:
 
 func _on_died(_source: Node) -> void:
 	_is_dead = true
-	velocity.x = 0.0
+	velocity = Vector2(0.0, -death_pop_velocity) # knocked up; the dead physics brings him down
+	set_shield(false) # a dead player drops the shield straight away, not at the respawn
 	collision_layer = 0
 	_hurtbox.set_deferred("monitoring", false)
 	_hurtbox.set_deferred("monitorable", false)
@@ -358,8 +367,48 @@ func _on_died(_source: Node) -> void:
 		death_fall_duration
 	)
 	fall_tween.tween_property(_body, "position:x", 3.0 * facing, death_fall_duration)
+	# Flash white, then stay tinted red while lying there, then fade out and respawn.
+	_body.modulate = Color(3.0, 3.0, 3.0)
+	fall_tween.tween_property(_body, "modulate", Color(1.0, 0.35, 0.35), death_fall_duration)
+	fall_tween.chain().tween_interval(death_linger)
+	fall_tween.chain().tween_property(_body, "modulate:a", 0.0, death_fade)
 	fall_tween.chain().tween_callback(respawn)
+	_death_sparks()
+	_death_shake()
 	GameState.player_died.emit()
+
+
+func _death_sparks() -> void:
+	var sparks := CPUParticles2D.new()
+	sparks.one_shot = true
+	sparks.explosiveness = 1.0
+	sparks.amount = 24
+	sparks.lifetime = 0.7
+	sparks.direction = Vector2.UP
+	sparks.spread = 180.0
+	sparks.initial_velocity_min = 60.0
+	sparks.initial_velocity_max = 150.0
+	sparks.gravity = Vector2(0.0, 320.0)
+	sparks.scale_amount_min = 1.5
+	sparks.scale_amount_max = 3.0
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 0.95, 0.7))
+	ramp.set_color(1, Color(death_spark_color, 0.0))
+	ramp.add_point(0.3, death_spark_color)
+	sparks.color_ramp = ramp
+	get_parent().add_child(sparks)
+	sparks.global_position = global_position + Vector2(0.0, -8.0)
+	sparks.emitting = true
+	sparks.finished.connect(sparks.queue_free)
+
+
+func _death_shake() -> void:
+	var shake := _camera.create_tween()
+	for i in 6:
+		var falloff := death_shake * (1.0 - i / 6.0)
+		shake.tween_property(_camera, "offset",
+			Vector2(randf_range(-falloff, falloff), randf_range(-falloff, falloff)), 0.04)
+	shake.tween_property(_camera, "offset", Vector2.ZERO, 0.05)
 
 
 func _on_damaged(_amount: float, _source: Node) -> void:

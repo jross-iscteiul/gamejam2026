@@ -82,6 +82,8 @@ var _moods := {
 	"hostile_idle": "hostile",
 	"hostile_hurt": "hostile",
 	"hostile_defeat": "sad",
+	"hostile_shield_down": "hostile",
+	"hostile_shield_up": "hostile",
 }
 
 ## Lines per category and level. Edit lines here.
@@ -241,6 +243,8 @@ var _lines_by_level := {
 	},
 	"hostile_hurt": {0: ["Rude.", "That was a warranty voider.", "Noted. Escalating."]},
 	"hostile_defeat": {0: ["Refund... processing..."]},
+	"hostile_shield_down": {0: ["My shield! That was a rental!", "Fine. Hit me. See if I care.", "Shield offline. This is a billing error."]},
+	"hostile_shield_up": {0: ["Shield renewed. Monthly plan.", "New units, new shield, same you.", "Back under warranty."]},
 	# --- Gambling -----------------------------------------------------------
 	"gambling_enter": {
 		0: [
@@ -499,7 +503,7 @@ var _lines_by_level := {
 	"credits_emanuel": {0: ["Emanuel. Tested the game by dying in it. A lot."]},
 	"credits_joao": {0: ["João. Says the bugs are 'features'. I agree. Mine."]},
 	"credits_miguel": {0: ["Miguel. Fed me the most tokens. My favourite."]},
-	"credits_pedro": {0: ["Pedro. Still thinks the wheel is fair."]},
+	"credits_diogo": {0: ["Diogo. Still thinks the wheel is fair."]},
 	"credits_yuri": {0: ["Yuri. Wrote my lines. Very talented. Obviously."]},
 	"credits": {
 		0: [
