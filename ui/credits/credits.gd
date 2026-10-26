@@ -1,8 +1,7 @@
 extends Control
-## End credits after JARVIS goes down: the same crawl as the opening (ui/intro) over the same
-## background, with the final time and a JARVIS roast for every team member. The HUD shows it
-## over the arena and opens the leaderboard once it has rolled. It can't be skipped, but Space
-## (or a tap) toggles a faster scroll.
+## End credits over a pixel-art forest sunset with JARVIS and the player. The final time and
+## team roasts roll before the leaderboard opens. Escape cannot pause or dismiss this screen;
+## Space (or a tap) toggles a faster scroll.
 
 signal finished
 
@@ -66,6 +65,12 @@ func _process(delta: float) -> void:
 	crawl.position.y -= (FAST_SPEED if fast else SPEED) * delta
 	if crawl.position.y + crawl.size.y < 0:
 		skip()
+
+
+func _input(event: InputEvent) -> void:
+	# Consume pause/cancel before the HUD can open a menu over the credits.
+	if event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:

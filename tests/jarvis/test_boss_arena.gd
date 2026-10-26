@@ -145,7 +145,9 @@ func _run() -> void:
 	jarvis.add_child(fight)
 	fight.set_physics_process(false)
 	fight._walker.set_physics_process(false)
-	fight.defeated.connect(func() -> void: _defeated += 1)
+	fight.defeated.connect(func() -> void:
+		_defeated += 1
+		GameState.boss_defeated.emit())
 	player.get_node("Camera2D").position_smoothing_enabled = false
 	await _frames(2)
 	await _capture("boss_arena_updated")
@@ -157,5 +159,34 @@ func _run() -> void:
 	_check(jarvis.global_position == mech_at and jarvis.mech.rotation == mech_angle and not get_tree().get_nodes_in_group("boss_explosion").is_empty(), "JARVIS mech detonates without falling or spinning")
 	await _capture("boss_arena_explosion")
 	await get_tree().create_timer(1.1).timeout
-	_check(_defeated == 1 and not is_instance_valid(jarvis), "stationary defeat sequence finishes exactly once")
+	_check(_defeated == 1 and is_instance_valid(jarvis), "victory fires once and preserves JARVIS for the ending")
+	var ending := get_tree().get_first_node_in_group("boss_ending")
+	_check(ending != null and not hud._credits_played, "credits wait for the ending conversation")
+	if ending != null:
+		var stopped_time := GameState.run_clock.elapsed_msec
+		await get_tree().create_timer(0.7).timeout
+		_check(GameState.run_clock.elapsed_msec == stopped_time, "reading the ending does not add to the final run time")
+		_check(jarvis.global_position.y > 340 and jarvis.body.scale.abs().is_equal_approx(Vector2.ONE * ending.tiny_scale) and not jarvis.mech.visible, "tiny JARVIS rests on the floor after the mech explodes")
+		_check(player.input_locked and player.held, "conversation freezes player movement and attacks")
+		ending._talking.skip_typing()
+		await _capture("boss_ending_conversation")
+		for press in 24:
+			if ending.done:
+				break
+			ending.advance()
+			await _frames(1)
+		_check(ending.done and hud._credits_played, "advancing the full exchange starts the credits")
+		_check(jarvis.body.face == "off" and _defeated == 1, "JARVIS remains powered down without a second victory signal")
+		for code in [KEY_ESCAPE, KEY_P]:
+			var key := InputEventKey.new()
+			key.keycode = code
+			key.physical_keycode = code
+			key.pressed = true
+			Input.parse_input_event(key)
+			await _frames(2)
+			key.pressed = false
+			Input.parse_input_event(key)
+			_check(not get_tree().paused and not hud._overlay.visible and is_instance_valid(hud.credits), "pause/cancel cannot leave or cover the credits")
+		hud.set_paused(true)
+		_check(not get_tree().paused, "HUD pause button cannot interrupt the credits")
 	get_tree().quit(1 if _failed else 0)

@@ -9,6 +9,7 @@ const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const Fireball := preload("res://characters/jarvis/fireball.gd")
 const Missile := preload("res://characters/jarvis/missile.gd")
 const Explosion := preload("res://characters/boss/pixel_explosion.gd")
+const EndingConversation := preload("res://characters/jarvis/ending_conversation.gd")
 
 @export var max_health: float = 12.0
 ## Armoured: it is three machines in one, so player shots land at this fraction of their damage.
@@ -645,8 +646,11 @@ func _die(killer: Node) -> void:
 		tween.tween_property(_jarvis.mech, "modulate:a", 0.0, 0.35)
 	await tween.finished
 	await get_tree().create_timer(0.35).timeout
+	# Register the ending before victory reaches the HUD, so credits wait for the exchange.
+	var ending := EndingConversation.new()
+	ending.name = "EndingConversation"
+	_jarvis.add_child(ending)
 	defeated.emit()
-	_jarvis.queue_free()
 
 
 ## He was running the whole floor: once he drops, the hatches seal and every unit still standing
