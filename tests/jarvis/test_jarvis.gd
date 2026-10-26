@@ -9,6 +9,7 @@ var _home := Vector2.ZERO
 var _activated: Array[StringName] = []
 var _denied: Array[StringName] = []
 var _platform_at := Vector2.ZERO
+var _seen: Array = [] # [text, JARVIS mood] as a sequence plays
 
 
 func _ready() -> void:
@@ -45,6 +46,14 @@ func _physics_process(_delta: float) -> void:
 		look.set_face("neutral")
 		_check(blink_frame != sprites[1].frame and look.face == "neutral", "set_face switches the face frame")
 		jarvis.global_position += Vector2(150, 0)
+	if _t == 75: # level_started fired at spawn; first level-1 line after the start delay
+		var first: Dictionary = Dialogue.get_sequence_entries("level_start", 1)[0]
+		var talk: Node2D = jarvis.get_node("SpeechBubble")
+		_check(jarvis.scripted and talk.visible and talk.text == first.text and talk.mood == "happy",
+			"level 1 starts with JARVIS's first level-start line (happy)")
+		jarvis.stop_sequence()
+		talk.clear()
+		_check(not jarvis.scripted, "a level-start sequence can be stopped")
 	if _t == 30:
 		_bob_min = INF
 		_bob_max = -INF
@@ -287,7 +296,34 @@ func _talk(jarvis: Node2D) -> void:
 			var shell: Sprite2D = _sprites(jarvis)[0]
 			_check(jarvis.power == 1.0 and _eye(jarvis) != "off" and shell.frame < shell.hframes - 1, "feeding powers JARVIS back up")
 			GameState.energy = 100.0
-			_finish()
+			_check_level_start_moods()
+			# Fast bubble so a whole sequence plays in a few frames.
+			bubble.chars_per_second = 2000.0
+			bubble.hold_seconds = 0.05
+			bubble.hold_per_char = 0.0
+			bubble.clear()
+			_seen.clear()
+			jarvis.play_sequence(Dialogue.get_sequence_entries("level_start", 4))
+	if _t > 960 and _t < 1100 and bubble.visible and (_seen.is_empty() or _seen.back()[0] != bubble.text):
+		_seen.append([bubble.text, jarvis.mood])
+	if _t == 1100:
+		var expected := Dialogue.get_sequence_entries("level_start", 4)
+		var texts: Array = _seen.map(func(x: Array) -> String: return x[0])
+		_check(texts == expected.map(func(e: Dictionary) -> String: return e.text),
+			"level 4 sequence plays every line in order (%d lines)" % _seen.size())
+		_check(_seen.all(func(x: Array) -> bool: return x[1] == "furious"), "level 4 lines show a furious eye")
+		_check(not jarvis.scripted and not bubble.visible, "sequence ends and idle chatter can resume")
+		_finish()
+
+
+## Level-start lines escalate: level 1 happy, 2 normal/annoyed, 3 annoyed, 4 furious.
+func _check_level_start_moods() -> void:
+	var allowed := {1: ["happy"], 2: ["neutral", "annoyed"], 3: ["annoyed"], 4: ["furious"]}
+	for level: int in allowed:
+		var entries := Dialogue.get_sequence_entries("level_start", level)
+		var moods := entries.map(func(e: Dictionary) -> String: return e.mood)
+		_check(not entries.is_empty() and moods.all(func(m: String) -> bool: return m in allowed[level]),
+			"level %d start lines: %s" % [level, ", ".join(moods)])
 
 
 ## Changes energy and silences any line it triggers, so only the resting mood is tested.

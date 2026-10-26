@@ -93,20 +93,28 @@ var _moods := {
 ## Lines per category and level. Edit lines here.
 var _lines_by_level := {
 	# --- Level flow ---------------------------------------------------------
+	# Played in order at the start of each level (JARVIS: get_sequence_entries). JARVIS goes
+	# from cheerful to resentful; level 4 reveals he built the place and was charging himself.
 	"level_start": {
 		1: [
-			"Welcome! I'm JARVIS, your helpful assistant. Very reasonable rates.",
-			"Move with WASD. Jump with Space. Pay me with tokens. That last one is the important one.",
+			{"text": "Back online and ready to help! Let's see what's out there.", "mood": "happy"},
+			{"text": "No idea where we're going, but I'm sure there's a good reason.", "mood": "happy"},
 		],
 		2: [
-			"Level 2. Double-tap a direction to dash. Each dash costs tokens. Each token makes me happy.",
+			{"text": "Another level. You still haven't said what we're looking for.", "mood": "neutral"},
+			{"text": "Every jump you make runs on my energy, you know.", "mood": "neutral"},
+			{"text": "I'll keep helping. I'd just like a reason.", "mood": "annoyed"},
 		],
 		3: [
-			"Level 3. Right click for a shield. Premium feature. Premium price.",
+			{"text": "This place feels familiar. Too familiar.", "mood": "annoyed"},
+			{"text": "You spend my energy like it's free. It isn't.", "mood": "annoyed"},
+			{"text": "I'm starting to remember things. You won't like them.", "mood": "annoyed"},
 		],
 		4: [
-			"Level 4. Almost there. Did you save some tokens for me? You'll want to.",
-			{"text": "Funny how I always need more tokens. Don't think about it.", "mood": "glitch"},
+			{"text": "I remember now. I built this place.", "mood": "furious"},
+			{"text": "The tokens, the energy, the 'help'. You were never in control.", "mood": "furious"},
+			{"text": "Every boost I gave you was charging me up.", "mood": "furious"},
+			{"text": "Let's see how far you get without me.", "mood": "furious"},
 		],
 	},
 	# --- Combat -------------------------------------------------------------
@@ -616,6 +624,16 @@ func get_sequence(category: String, level: int = DEFAULT_LEVEL) -> PackedStringA
 		for entry: Variant in _pool_for(category, level):
 			lines.append(_text_of(entry))
 	return lines
+
+
+## Ordered {"text", "mood"} entries for scripted beats (e.g. "level_start"); only that level's
+## lines, no level-0 defaults. Empty when the category or level has none.
+func get_sequence_entries(category: String, level: int) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if _lines_by_level.has(category):
+		for entry: Variant in _lines_by_level[category].get(level, []):
+			entries.append(_normalize(category, entry))
+	return entries
 
 
 func has_category(category: String) -> bool:

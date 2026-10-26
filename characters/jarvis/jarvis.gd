@@ -44,6 +44,8 @@ extends Node2D
 @export var idle_line_min_seconds: float = 20.0
 @export var idle_line_max_seconds: float = 40.0
 @export var denied_line_cooldown: float = 4.0 # don't nag on every refused press
+## Pause after a level starts before JARVIS's level-start lines (Dialogue "level_start").
+@export var level_start_delay: float = 0.8
 
 @export_group("Mood")
 ## Resting mood follows the energy bar: happy above happy_energy, furious below furious_energy,
@@ -53,7 +55,8 @@ extends Node2D
 @export var furious_energy: float = 15.0
 ## Other mood names (from GameState / Dialogue callers) mapped onto JARVIS's moods.
 @export var mood_aliases: Dictionary[String, String] = {
-	"normal": "neutral", "smug": "happy", "sad": "annoyed", "angry": "furious"}
+	"normal": "neutral", "smug": "happy", "sad": "annoyed", "angry": "furious",
+	"hostile": "furious", "glitch": "annoyed"}
 
 @export_group("Offline")
 ## At energy 0 JARVIS powers down: sinks toward the player's waist, droops nose-down, bobs
@@ -167,6 +170,7 @@ func _ready() -> void:
 	_rng.randomize()
 	GameState.jarvis_enabled_changed.connect(_on_enabled_changed)
 	GameState.jarvis_say.connect(_on_jarvis_say)
+	GameState.level_started.connect(_on_level_started)
 	GameState.energy_changed.connect(_on_energy_changed)
 	ability_denied.connect(_on_ability_denied)
 	_low_energy_warned = GameState.energy < low_energy_threshold
@@ -314,9 +318,48 @@ func say_line(category: String, line_mood: String = "neutral") -> void:
 	_reset_idle()
 
 
+## True while a scripted sequence (level start) is playing; idle chatter waits for it.
+var scripted: bool = false
+var _sequence_id: int = 0
+
+
+## Level start: JARVIS's lines for this level, in order (cheerful on level 1, furious by 4).
+func _on_level_started(level: int) -> void:
+	if hostile or betraying or dormant or not GameState.jarvis_enabled:
+		return
+	play_sequence(Dialogue.get_sequence_entries("level_start", level), level_start_delay)
+
+
+## Says {"text", "mood"} entries one after another, each once the previous has been read
+## (the bubble typed it, held it and hid). Stops early if JARVIS goes offline or hostile.
+func play_sequence(entries: Array[Dictionary], delay: float = 0.0) -> void:
+	if entries.is_empty():
+		return
+	_sequence_id += 1
+	var id := _sequence_id
+	scripted = true
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	for entry in entries:
+		if id != _sequence_id or not is_inside_tree() or hostile or betraying or not GameState.jarvis_enabled:
+			break
+		bubble.say(entry.text, normalize_mood(entry.mood))
+		_reset_idle()
+		while id == _sequence_id and is_inside_tree() and bubble.is_talking():
+			await get_tree().process_frame
+	if id == _sequence_id:
+		scripted = false
+
+
+## Cancels a playing sequence (cutscenes, tests); the current line stays until it hides.
+func stop_sequence() -> void:
+	_sequence_id += 1
+	scripted = false
+
+
 func _tick_talk(delta: float) -> void:
 	_denied_cooldown_left = maxf(_denied_cooldown_left - delta, 0.0)
-	if not GameState.jarvis_enabled or bubble.is_talking():
+	if not GameState.jarvis_enabled or bubble.is_talking() or scripted:
 		return
 	_idle_left -= delta
 	if _idle_left <= 0.0:
