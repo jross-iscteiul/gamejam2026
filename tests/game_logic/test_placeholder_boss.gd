@@ -91,6 +91,11 @@ func _check_arena_death(scene: Node, player: Player) -> void:
 
 
 
+func _count_projectiles(script: Script) -> int:
+	return get_tree().get_nodes_in_group("enemy_projectile").filter(
+		func(node: Variant) -> bool: return node.get_script() == script).size()
+
+
 ## Last phase: the boss hands the fight to JARVIS, who switches sides. Skips the speech
 ## timings so the betrayal animation does not stall the suite, then shoots him down.
 func _defeat_through_jarvis(player: Node2D) -> Jarvis:
@@ -120,6 +125,22 @@ func _defeat_through_jarvis(player: Node2D) -> Jarvis:
 	_check(landed, "the mech stands on the ground like the player")
 	_check(absf(jarvis.mech.scale.y) <= 0.8, "the mech is small enough for the floating islands")
 	var health := jarvis.get_node("BossHealth") as Health
+	var fight := jarvis.get_node("JarvisBoss") as JarvisBoss
+	await _frames()
+	_check(fight.shield_up and fight._pods.size() == 3, "the three pod units hold up a shield")
+	hurtbox.take_damage(health.max_health, player)
+	_check(health.current == health.max_health, "the shield blocks damage to the mech")
+	fight._missiles()
+	await _frames(2)
+	_check(_count_projectiles(fight.Missile) > 0, "the mech fires homing missiles")
+	(fight._pods[0].get_node("PodHealth") as Health).kill(player)
+	await _frames(3)
+	_check(_count_projectiles(fight.Fireball) > 0, "popping a pod rains fireballs")
+	_check(fight.shield_up, "the shield holds while any pod is left")
+	for pod in fight._pods.duplicate():
+		(pod.get_node("PodHealth") as Health).kill(player)
+	await _frames(2)
+	_check(not fight.shield_up and not health.invulnerable, "popping every pod drops the shield")
 	var others := get_tree().get_nodes_in_group("enemy").filter(
 		func(node: Variant) -> bool: return node != jarvis and not jarvis.assembled_units.has(node))
 	while health.current > 0.0:
