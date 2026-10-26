@@ -24,7 +24,7 @@ centered = false
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2")
-max_health = 10.0
+max_health = 30.0
 invincibility_duration = 0.1
 
 [node name="Hurtbox" type="Area2D" parent="."]

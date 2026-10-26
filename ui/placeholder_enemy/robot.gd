@@ -81,6 +81,9 @@ func _apply_paint() -> void:
 	material.set_shader_parameter("shade_color", colors[1])
 	material.set_shader_parameter("dark_color", colors[2])
 	_sprite.material = material
+	if _star != null:
+		_star.queue_free()
+		_star = null
 	if paint == Paint.RED_STAR:
 		# A child of the sprite, so it fades, flashes and keels over with the body.
 		_star = Node2D.new()
@@ -141,6 +144,9 @@ func conscript() -> void:
 	velocity = Vector2.ZERO
 	_disable_areas()
 	_sprite.play(&"idle")
+	# JARVIS's crew wears his colours, whatever paint the unit came in with.
+	paint = Paint.RED_STAR
+	_apply_paint()
 
 
 ## The network went dark (JARVIS shot down): no kill credit, no drop, just a unit falling over.

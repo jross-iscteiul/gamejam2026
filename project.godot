@@ -104,6 +104,7 @@ pause={
 2d_physics/layer_5="enemy_projectiles"
 2d_physics/layer_6="pickups"
 2d_physics/layer_7="hazards"
+2d_physics/layer_8="platforms"
 
 [physics]
 
