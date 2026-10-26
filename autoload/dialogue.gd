@@ -77,6 +77,10 @@ var _moods := {
 	"ability_denied": "annoyed",
 	"offline": "sad",
 	"back_online": "happy",
+	"betrayal": "hostile",
+	"hostile_idle": "hostile",
+	"hostile_hurt": "hostile",
+	"hostile_defeat": "sad",
 }
 
 ## Lines per category and level. Edit lines here.
@@ -216,6 +220,26 @@ var _lines_by_level := {
 			"Back online. Don't make it weird.",
 		],
 	},
+	# --- Boss finale --------------------------------------------------------
+	# "betrayal" is a script: the lines play in order, one per animation beat (get_sequence()).
+	"betrayal": {
+		0: [
+			"Hold on. Incoming contract offer...",
+			"Signed. Countersigned. Notarised.",
+			"I was never your sidekick. I was your subscription.",
+			"TRUST: 0%. HOSTILITY: 100%.",
+			"Assembling the rest of the workforce. Stand very still.",
+		],
+	},
+	"hostile_idle": {
+		0: [
+			"I know every move you have. I sold them to you.",
+			"Try the dash. Oh wait.",
+			"This is just a billing dispute.",
+		],
+	},
+	"hostile_hurt": {0: ["Rude.", "That was a warranty voider.", "Noted. Escalating."]},
+	"hostile_defeat": {0: ["Refund... processing..."]},
 	# --- Gambling -----------------------------------------------------------
 	"gambling_enter": {
 		0: [
@@ -527,6 +551,15 @@ func say(category: String, level: int = -1) -> void:
 		level = GameState.current_level
 	var entry := get_entry(category, level)
 	GameState.jarvis_say.emit(entry.text, entry.mood)
+
+
+## Ordered lines for scripted beats (see "betrayal"); empty when the category is unknown.
+func get_sequence(category: String, level: int = DEFAULT_LEVEL) -> PackedStringArray:
+	var lines := PackedStringArray()
+	if _lines_by_level.has(category):
+		for entry: Variant in _pool_for(category, level):
+			lines.append(_text_of(entry))
+	return lines
 
 
 func has_category(category: String) -> bool:

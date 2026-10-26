@@ -10,9 +10,13 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 
-func _on_body_entered(_body: Node2D) -> void:
+func _on_body_entered(body: Node2D) -> void:
 	set_deferred("monitoring", false)
 	gate.closed = true
+	# Dying in here must not send the player back behind the sealed gate, outside the locked
+	# camera: from now on they respawn just inside the arena.
+	if "respawn_point" in body:
+		body.respawn_point = global_position
 	get_tree().current_scene.lock_camera(arena)
 	await get_tree().create_timer(Gate.SLIDE_TIME).timeout
 	_shake(get_viewport().get_camera_2d())

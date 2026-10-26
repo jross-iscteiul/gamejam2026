@@ -16,6 +16,7 @@ var _home: float
 var _direction: float = -1.0
 var _shot_left: float = 1.2
 var _dead: bool = false
+var _assembled: bool = false # bolted onto the giant: still a live unit, but no longer its own
 @onready var _health: Health = $Health
 @onready var _sprite: AnimatedSprite2D = $Sprite
 
@@ -34,7 +35,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _dead:
+	if _dead or _assembled:
 		return
 	velocity.y = minf(velocity.y + 980.0 * delta, 800.0)
 	if is_on_wall() or absf(position.x - _home) > patrol_distance:
@@ -78,10 +79,48 @@ func _flash(_amount: float, _source: Node) -> void:
 	tween.tween_property(_sprite, "modulate", Color.WHITE, 0.15)
 
 
+## Pulled out of the ranks to become a limb of JARVIS's giant form: it stops patrolling and
+## shooting on its own and its boxes go quiet, because the giant does the damage from now on.
+func conscript() -> void:
+	if _assembled:
+		return
+	_assembled = true
+	velocity = Vector2.ZERO
+	_disable_areas()
+	_sprite.play(&"idle")
+
+
+## The network went dark (JARVIS shot down): no kill credit, no drop, just a unit falling over.
+func shut_down() -> void:
+	if _dead:
+		return
+	_dead = true
+	_disable_areas()
+	_sprite.pause()
+	var tween := create_tween()
+	tween.set_parallel()
+	tween.tween_property(_sprite, "modulate", Color(0.25, 0.25, 0.3, 0.0), 1.0)
+	tween.tween_property(_sprite, "rotation", deg_to_rad(90.0 * _direction), 0.8) \
+		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	queue_free()
+
+
+## A downed unit must be harmless to walk over: the contact hitbox has to stop being monitorable
+## too, because the player's hurtbox is the side that watches for it.
+func _disable_areas() -> void:
+	$Contact.continuous = false
+	for area: Area2D in [$Hurtbox, $Contact]:
+		area.set_deferred("monitoring", false)
+		area.set_deferred("monitorable", false)
+		area.get_node("Shape").set_deferred("disabled", true)
+
+
 func _die(killer: Node) -> void:
 	if _dead:
 		return
 	_dead = true
+	_disable_areas() # a corpse must not damage the player on the frame it dies
 	GameState.enemy_killed.emit(self, killer)
 	var drop := DROP.instantiate()
 	get_parent().add_child.call_deferred(drop)

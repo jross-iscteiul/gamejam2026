@@ -36,7 +36,7 @@ Code review against `TASKS 1.md`, the root README and `tests/game_logic/README.m
 | Economy, feeding, per-level decay, zero-trust gate and kill doubt | Done | `autoload/game_state.gd`; JARVIS still needs its future attack/ability integration |
 | Small/big pickups and pickup sound | Done | `objects/token/`, original coin drawing and chimes |
 | Main menu → intro → levels 1–4 | Done | Existing menu, crawl and door transitions |
-| Boss → credits | Pending | A temporary square now ends timed runs; the final boss and credits endpoint remain pending |
+| Boss → credits | Pending | The level 4 robot boss + JARVIS finale ends timed runs; the credits endpoint remains pending |
 | Trust, tokens, player health and boss HUD | Done | `ui/hud/hud.gd`; player health is now a bottom bar; boss bar consumes the agreed signals |
 | Main/pause/settings, saved volume and touch preference | Done | `ui/menus/`, mobile multi-touch pads |
 | Enemy/token placements in four entity scenes | Done with placeholders | Package 3 robots patrol/shoot/drop tokens; final Package 4 enemies can replace them |
@@ -53,8 +53,8 @@ Code review against `TASKS 1.md`, the root README and `tests/game_logic/README.m
 | Sentinel, Bomber, Kamikaze | Pending | No production enemy controllers/scenes found in `characters/enemies/` |
 | Projectiles, explosions, hit flash, kill events | Partial | Shared damage and Package 3 test robot/projectile/flash/kill events exist; production enemy/explosion implementation is still needed |
 | Arena entry | Partial | Level 4 locks the gate/camera at a trigger; planned fall from the impossible gap is not implemented |
-| Boss phases, weak points, barrages, missiles, shield regeneration | Pending | Level 4's spawn hosts a stationary five-HP square in `ui/placeholder_boss/` solely for leaderboard testing; no final combat implementation |
-| Boss health/defeat events | Placeholder integrated | The square uses shared damage and emits health/victory events; the real boss must replace its entity instance |
+| Boss phases, weak points, barrages, missiles, shield regeneration | Partial | Two-stage finale implemented: the Foreman robot (`characters/boss/boss_robot.gd`) paces, fires volleys and ground-slams, with arena a wall hatch (`objects/spawner/minion_door.gd`) feeding reinforcements; at 40% health it hands the contract to JARVIS, who switches sides (`Jarvis.betray()`), has three units build a mech (`characters/jarvis/mech_frame.gd`) that he pilots from the cockpit, and fights as the last opponent (`characters/jarvis/jarvis_boss.gd`, armoured through `Hurtbox.damage_multiplier`). Weak points, missiles and shield regeneration are still pending |
+| Boss health/defeat events | Done | The boss robot uses shared damage and emits health/victory events; the bar is relabelled per phase through `boss_label_changed` |
 | Enemy/boss audio and boss music | Pending | Current level soundtrack is not a dedicated boss implementation |
 
 ## Package 5 — Levels
@@ -87,8 +87,8 @@ Code review against `TASKS 1.md`, the root README and `tests/game_logic/README.m
 ## Integration work still needed
 
 1. Complete JARVIS attacks/abilities and replace test robots with the final enemy scenes.
-2. Replace the temporary square with the final boss and its victory event; wire the final gap/twist and credits when those packages are ready. Defeating the square currently finishes timed runs for leaderboard testing; entering the arena alone does not.
-3. The homelab leaderboard is deployed and `leaderboard.cfg` is enabled. Re-export/upload the game, verify the actual itch.io iframe origin, then test a New Game run ending at the square and public score submission. Names/times are client-reported; replay/server validation would be separate anti-cheat work. Change/reset the ruleset when the final boss changes completion times.
+2. Level 4 now runs a two-stage finale: the Foreman robot, then JARVIS as the turncoat last opponent. Wire the final gap/twist and credits when those packages are ready. Defeating JARVIS finishes timed runs; entering the arena alone does not.
+3. The homelab leaderboard is deployed and `leaderboard.cfg` is enabled. Re-export/upload the game, verify the actual itch.io iframe origin, then test a New Game run ending at the JARVIS finale and public score submission. Names/times are client-reported; replay/server validation would be separate anti-cheat work. Change/reset the ruleset when the final boss changes completion times.
 4. Complete the remaining Package 1/5 movement/platform features and planned extras, or explicitly agree to cut them for the jam.
 5. Finish a full playthrough/balance pass, mobile/browser testing, and outstanding asset attribution checks in `credits/ASSETS.md` (including the existing Freepik TBD entry).
 

@@ -79,7 +79,7 @@ Owns: real `GameState`, `objects/token/`, `ui/`, scene manager
 - [x] UI and token pickup sounds
 - [x] Full-run timer, level splits, deaths and saved personal best; pause stops time, chapter select/restarts are practice
 - [x] Self-hosted leaderboard client, API, SQLite persistence and Docker deployment files
-- [x] Temporary square boss in level 4 for testing full-run victory and score submission (five shots, no attacks)
+- [x] Level 4 boss: the Foreman robot (volleys, ground slam, minion doors) that hands the fight to a turncoat JARVIS for the last phase
 - [x] Deploy leaderboard to `leaderboard-gamejam2026.suricata-lab.com`, verify HTTPS/API connectivity, and enable `leaderboard.cfg`
 - [ ] Re-export/upload the enabled game and test the published itch.io build
 - [ ] End-to-end full-run score submission after the real boss emits `boss_defeated`

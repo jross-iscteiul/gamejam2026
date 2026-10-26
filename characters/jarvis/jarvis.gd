@@ -79,6 +79,29 @@ extends Node2D
 @export var boost_forward_shift: float = 6.0
 @export var boost_seconds: float = 0.45
 @export var boost_recoil: float = 6.0 # pushed down a little by the jump
+@export_group("Betrayal")
+## Final boss phase: JARVIS takes the boss's contract and switches sides. These tune the
+## hand-over animation (see betray()); the fight itself lives in jarvis_boss.gd.
+@export var hostile_color: Color = Color(1.0, 0.35, 0.35)
+@export var betrayal_glitch_steps: int = 7
+@export var betrayal_glitch_step_seconds: float = 0.05
+@export var betrayal_glitch_offset: float = 3.0 # pixels of shell stutter
+@export var betrayal_drift_seconds: float = 0.4 # drifting out of formation
+@export var betrayal_drift: Vector2 = Vector2(0.0, -26.0)
+@export var betrayal_turn_seconds: float = 0.6 # the flip over to the boss's side
+@export var betrayal_spins: float = 2.0 # full rotations while crossing the arena
+@export var betrayal_scale: float = 1.6 # he grows into his boss form
+## His speech runs this much faster during the betrayal, so the handover doesn't drag.
+@export var betrayal_talk_speed: float = 1.8
+@export var betrayal_shake_strength: float = 7.0
+## Assembly: he conscripts spare units, they build a walking chassis and he pilots it from the
+## cockpit cradle on top (see MechFrame).
+@export var betrayal_assembly_units: int = 3
+@export var betrayal_assembly_seconds: float = 0.35 # flight time of one unit into its pod
+## Size of the assembled machine: small enough to fit on the arena's floating islands.
+@export var betrayal_giant_scale: float = 0.6
+## The drone's size once seated, so the pilot stays in proportion with the cockpit.
+@export var betrayal_pilot_scale: float = 0.9
 
 @export_group("Look")
 @export var disabled_color: Color = Color(0.45, 0.45, 0.5)
@@ -89,15 +112,29 @@ extends Node2D
 @export var dormant_tilt_degrees: float = 90.0
 
 const SpeechBubble := preload("res://characters/jarvis/speech_bubble.gd")
+const MechFrame := preload("res://characters/jarvis/mech_frame.gd")
 
 ## JARVIS's moods; "neutral" is the normal mood. "offline" is used while disabled.
 const MOODS: PackedStringArray = ["neutral", "happy", "annoyed", "furious"]
+## Spare unit used to top the giant up to a full set of limbs when the arena has run dry.
+const ASSEMBLY_UNIT := preload("res://ui/placeholder_enemy/robot.tscn")
 
 signal mood_changed(mood: String)
 signal ability_activated(ability: StringName)
 signal ability_denied(ability: StringName) # not enough energy or JARVIS offline
+signal betrayed # the switching-sides animation finished; the boss fight is his now
+signal defeated # the player shot him down in the final phase
 
 var player: Player
+## True once the betrayal animation finished: JARVIS is the final opponent (see jarvis_boss.gd).
+var hostile: bool = false
+## True while the switching-sides animation plays; normal follow/shoot/ability logic is off.
+var betraying: bool = false
+## Units bolted onto him as limbs of the giant (see _betrayal_assemble()).
+var assembled_units: Array[Node2D] = []
+## The chassis he pilots in the final phase, and the cockpit seat he rides in on it.
+var mech: MechFrame
+var seat_offset: Vector2 = Vector2.ZERO
 var mood: String = "neutral"
 ## Current assist pose: &"", &"dash", &"boost" or &"shield".
 var assist: StringName = &""
@@ -142,6 +179,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if betraying or hostile:
+		return # the betrayal tweens / jarvis_boss.gd own the drone from here on
 	if dormant:
 		_lie_down(delta)
 		return
@@ -312,6 +351,8 @@ func _on_energy_changed(energy: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if betraying or hostile:
+		return
 	if dormant or (not is_instance_valid(player) and not _find_player()) or player.input_locked:
 		return
 	_handle_dash_input()
@@ -463,6 +504,8 @@ func _target_position() -> Vector2:
 
 
 func _apply_enabled_look(enabled: bool) -> void:
+	if betraying or hostile:
+		return # the betrayal animation owns the tint
 	body.modulate = Color.WHITE if enabled else disabled_color
 
 
@@ -473,3 +516,221 @@ func _on_enabled_changed(enabled: bool) -> void:
 		say_line("back_online", "happy")
 	elif not GameState.jarvis_hostile:
 		say_line("offline", "offline")
+
+
+#region Betrayal
+## Final boss phase: JARVIS takes the boss's side. Plays the whole switching-sides animation
+## and then hands the drone to jarvis_boss.gd, which fights the player as the last opponent.
+## `anchor` is where he settles once he has crossed over (the boss's spot).
+## Awaitable: the caller can wait for the animation before arming the fight.
+func betray(anchor: Vector2) -> void:
+	if betraying or hostile:
+		return
+	betraying = true
+	GameState.jarvis_hostile = true # cuts the abilities, the trust decay and the feed button
+	if is_instance_valid(player):
+		player.set_shield(false)
+	bubble.clear()
+	var lines := Dialogue.get_sequence("betrayal")
+	# 1. He stops mid-formation and drifts out of it, rotor idling, while the offer comes in.
+	await _betrayal_drift(lines)
+	# 2. The contract installs: the shell stutters and the eye cycles through every mood.
+	await _betrayal_glitch(lines)
+	# 3. The turn itself: he flips around, spins across the arena and lands red on the far side.
+	await _betrayal_turn(anchor, lines)
+	# 4. Boss form: he swells, the rotor spools back up and the health bar becomes his.
+	await _betrayal_power_up(lines)
+	# 5. Assembly: three units march in and bolt themselves on as arms and legs.
+	await _betrayal_assemble(lines)
+	betraying = false
+	hostile = true
+	var fight := JarvisBoss.new()
+	fight.name = "JarvisBoss"
+	add_child(fight)
+	fight.defeated.connect(func() -> void: defeated.emit())
+	GameState.jarvis_betrayed.emit()
+	betrayed.emit()
+
+
+func _betrayal_drift(lines: PackedStringArray) -> void:
+	body.set_face("neutral")
+	var tween := create_tween().set_parallel()
+	tween.tween_property(self, "global_position", global_position + betrayal_drift, betrayal_drift_seconds) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(body, "rotation", 0.0, betrayal_drift_seconds)
+	await tween.finished
+	await _betrayal_line(lines, 0, "neutral")
+
+
+## Stutters the shell and flickers the face: the hand-over is being installed.
+func _betrayal_glitch(lines: PackedStringArray) -> void:
+	const FLICKER: PackedStringArray = ["annoyed", "neutral", "furious", "off", "happy", "furious"]
+	var rest := body.position
+	for i in betrayal_glitch_steps:
+		body.position = rest + Vector2(
+			_rng.randf_range(-betrayal_glitch_offset, betrayal_glitch_offset),
+			_rng.randf_range(-betrayal_glitch_offset, betrayal_glitch_offset))
+		body.set_face(FLICKER[i % FLICKER.size()])
+		body.modulate = hostile_color if i % 2 == 1 else Color.WHITE
+		body.power = 0.0 if i % 3 == 0 else 1.0 # rotor coughs
+		await get_tree().create_timer(betrayal_glitch_step_seconds).timeout
+	body.position = rest
+	body.modulate = Color.WHITE
+	body.power = 1.0
+	body.set_face("annoyed")
+	await _betrayal_line(lines, 1, "annoyed")
+
+
+## The literal change of sides: flip the drone around, spin it over to the boss's anchor and
+## bleed the friendly cyan out of it into hostile red.
+func _betrayal_turn(anchor: Vector2, lines: PackedStringArray) -> void:
+	body.set_face("furious")
+	facing = -1 if anchor.x > global_position.x else 1
+	_shake_camera(betrayal_shake_strength, betrayal_turn_seconds)
+	var tween := create_tween().set_parallel()
+	tween.tween_property(self, "global_position", anchor, betrayal_turn_seconds) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(body, "rotation", body.rotation + TAU * betrayal_spins * signf(anchor.x - global_position.x), betrayal_turn_seconds) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	# Mirror the sprite through zero width so the flip reads as "he turned to face you".
+	tween.tween_property(body, "scale:x", float(facing), betrayal_turn_seconds * 0.5) \
+		.set_trans(Tween.TRANS_SINE)
+	tween.tween_property(body, "modulate", hostile_color, betrayal_turn_seconds)
+	await tween.finished
+	body.rotation = 0.0
+	body.scale.x = facing
+	await _betrayal_line(lines, 2, "furious")
+
+
+func _betrayal_power_up(lines: PackedStringArray) -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(body, "scale", Vector2(facing, 1.0) * betrayal_scale, 0.35) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(bubble, "scale", Vector2.ONE / betrayal_scale, 0.35) # keep the text readable
+	tween.tween_property(bubble, "position:y", -14.0 * betrayal_scale, 0.35)
+	await tween.finished
+	_shake_camera(betrayal_shake_strength * 1.5, 0.4)
+	await _betrayal_line(lines, 3, "furious")
+
+
+## Assembly: the units stop fighting on their own and build a walking chassis around him. They
+## slot into its chest and shoulder pods, the plating snaps on, and JARVIS drops into the
+## cockpit cradle on top and drives the thing for the rest of the fight.
+func _betrayal_assemble(lines: PackedStringArray) -> void:
+	var units := _assembly_units()
+	if units.is_empty():
+		return
+	await _betrayal_line(lines, 4, "furious")
+	mech = MechFrame.new()
+	mech.name = "Mech"
+	mech.scale = Vector2(facing, 1.0) * betrayal_giant_scale
+	mech.modulate = Color(1.0, 1.0, 1.0, 0.0) # the frame fades in as the units lock together
+	add_child(mech)
+	move_child(mech, 0) # he rides on top of it, so it draws behind him
+	for i in units.size():
+		var unit: Variant = units[i]
+		if not is_instance_valid(unit): # destroyed before it reached the chassis: send a spare
+			unit = _spare_unit(i)
+		await _mount_unit(unit, i)
+	await _raise_frame()
+	await _board_mech()
+
+
+## The plating powers on around the slotted units and the machine takes its full size.
+func _raise_frame() -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(mech, "modulate", Color.WHITE, 0.3)
+	tween.tween_property(mech, "scale", Vector2(facing, 1.0) * betrayal_giant_scale, 0.35) \
+		.from(Vector2(facing, 1.0) * betrayal_giant_scale * 0.7) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	_shake_camera(betrayal_shake_strength * 2.0, 0.35)
+
+
+## He settles into the cradle: from here the fight controller keeps him on this seat.
+func _board_mech() -> void:
+	seat_offset = MechFrame.SEAT_POINT * betrayal_giant_scale
+	var tween := create_tween().set_parallel()
+	tween.tween_property(body, "position", seat_offset, 0.4) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(body, "scale", Vector2(facing, 1.0) * betrayal_pilot_scale, 0.4)
+	tween.tween_property(bubble, "scale", Vector2.ONE, 0.4)
+	tween.tween_property(bubble, "position:y", seat_offset.y - 18.0, 0.4)
+	await tween.finished
+	_shake_camera(betrayal_shake_strength, 0.2)
+
+
+## Units for the machine: whatever is still standing in the arena, topped up from the spare
+## pool so the chassis always has its full crew.
+func _assembly_units() -> Array[Node2D]:
+	var units: Array[Node2D] = []
+	for node: Variant in get_tree().get_nodes_in_group("enemy"):
+		if units.size() >= betrayal_assembly_units:
+			break
+		if not is_instance_valid(node) or node == self:
+			continue
+		if node.is_in_group("boss") or node.is_in_group("jarvis") or not node.has_method("conscript"):
+			continue
+		units.append(node)
+	while units.size() < betrayal_assembly_units:
+		units.append(_spare_unit(units.size()))
+	for unit in units:
+		unit.conscript() # claimed now: they stop fighting and can no longer be shot down
+	return units
+
+
+func _spare_unit(index: int) -> Node2D:
+	var spare: Node2D = ASSEMBLY_UNIT.instantiate()
+	get_parent().add_child(spare)
+	spare.global_position = global_position + Vector2(
+		200.0 * signf(global_position.x - (player.global_position.x if is_instance_valid(player) else 0.0)),
+		40.0 * index)
+	return spare
+
+
+## One unit marches out of the ranks and drops into its pod on the chassis.
+func _mount_unit(unit: Node2D, index: int) -> void:
+	unit.conscript()
+	var world := unit.global_transform
+	unit.get_parent().remove_child(unit)
+	mech.add_child(unit)
+	unit.global_transform = world
+	var tween := create_tween().set_parallel()
+	tween.tween_property(unit, "position", mech.slot(unit, index), betrayal_assembly_seconds) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(unit, "rotation", 0.0, betrayal_assembly_seconds)
+	tween.tween_property(unit, "scale", Vector2.ONE * MechFrame.SLOT_SCALE, betrayal_assembly_seconds)
+	tween.tween_property(unit, "modulate", hostile_color, betrayal_assembly_seconds)
+	await tween.finished
+	assembled_units.append(unit)
+	_shake_camera(betrayal_shake_strength * 0.6, 0.18) # the clunk of the lock
+
+
+func _betrayal_line(lines: PackedStringArray, index: int, line_mood: String) -> void:
+	if index >= lines.size():
+		return
+	var cps := bubble.chars_per_second
+	var hold := bubble.hold_seconds
+	var per_char := bubble.hold_per_char
+	bubble.chars_per_second = cps * betrayal_talk_speed
+	bubble.hold_seconds = hold / betrayal_talk_speed
+	bubble.hold_per_char = per_char / betrayal_talk_speed
+	bubble.say(lines[index], normalize_mood(line_mood))
+	await bubble.finished
+	bubble.chars_per_second = cps
+	bubble.hold_seconds = hold
+	bubble.hold_per_char = per_char
+
+
+func _shake_camera(strength: float, duration: float) -> void:
+	var camera := get_viewport().get_camera_2d()
+	if camera == null:
+		return
+	var steps := maxi(int(duration / 0.04), 1)
+	var tween := create_tween()
+	for i in steps:
+		var falloff := strength * (1.0 - float(i) / steps)
+		tween.tween_property(camera, "offset",
+			Vector2(_rng.randf_range(-falloff, falloff), _rng.randf_range(-falloff, falloff)), 0.04)
+	tween.tween_property(camera, "offset", Vector2.ZERO, 0.06)
+#endregion

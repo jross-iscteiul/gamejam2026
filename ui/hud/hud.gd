@@ -12,6 +12,11 @@ var _status: Label
 var _energy: ProgressBar
 var _feed: Button
 var _boss_box: VBoxContainer
+var _boss_label: Label
+## Labels that get the full-width bar at the bottom; any other boss (the Foreman warm-up) gets a
+## small bar tucked into the top-right corner, out of the way of the fight.
+const MAIN_BOSS_LABELS: PackedStringArray = ["JARVIS"]
+var _boss_compact: bool = false
 var _boss: ProgressBar
 var _speech: Label
 var _notice: Label
@@ -46,6 +51,7 @@ func _ready() -> void:
 	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_energy(GameState.energy))
 	GameState.god_mode_changed.connect(_on_god_mode_changed)
 	GameState.boss_health_changed.connect(_update_boss)
+	GameState.boss_label_changed.connect(_update_boss_label)
 	GameState.boss_defeated.connect(_boss_defeated)
 	GameState.jarvis_say.connect(_say)
 	GameState.token_collected.connect(func(value: int) -> void: notify("+%d TOKEN%s" % [value, "S" if value != 1 else ""]))
@@ -136,7 +142,8 @@ func _build_hud() -> void:
 	_boss_box.offset_top = -128
 	_boss_box.offset_bottom = -40
 	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_box.add_child(GameUI.label("BOSS", 24, GameUI.RED))
+	_boss_label = GameUI.label("BOSS", 24, GameUI.RED)
+	_boss_box.add_child(_boss_label)
 	_boss = ProgressBar.new()
 	_boss.custom_minimum_size.y = 32
 	_boss.show_percentage = false
@@ -267,14 +274,39 @@ func _update_health(value: float, maximum: float) -> void:
 
 
 func _layout_bottom_bars() -> void:
+	if _boss_compact:
+		_boss_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		_boss_box.offset_left = -432
+		_boss_box.offset_right = -32
+		_boss_box.offset_top = 132
+		_boss_box.offset_bottom = 184
+		_boss_label.add_theme_font_size_override("font_size", 16)
+		_boss.custom_minimum_size.y = 14
+		return
+	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_boss_box.offset_left = -420
+	_boss_box.offset_right = 420
 	_boss_box.offset_top = -480 if _touch_controls.visible else -240
 	_boss_box.offset_bottom = -392 if _touch_controls.visible else -152
+	_boss_label.add_theme_font_size_override("font_size", 24)
+	_boss.custom_minimum_size.y = 32
 
 
 func _update_boss(value: float, maximum: float) -> void:
 	_boss_box.visible = maximum > 0.0 and value > 0.0
 	_boss.max_value = maxf(1.0, maximum)
 	_boss.value = value
+
+
+## An empty label means no boss holds the bar (e.g. the handover): hide it until the next
+## boss reports its health.
+func _update_boss_label(label: String) -> void:
+	_boss_label.text = label
+	if label.is_empty():
+		_boss_box.hide()
+		return
+	_boss_compact = not MAIN_BOSS_LABELS.has(label)
+	_layout_bottom_bars()
 
 
 func _boss_defeated() -> void:
