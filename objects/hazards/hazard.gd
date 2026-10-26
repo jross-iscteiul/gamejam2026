@@ -9,6 +9,10 @@ const PLAYER_LAYER := 2
 
 ## Speed/timing multiplier set per level by the generator (1.0 = level 1). Never scales damage.
 @export_range(0.5, 3.0) var difficulty: float = 1.0
+## Knockback speed on touch, through the player's apply_knockback() (0 = no push).
+@export var knockback: float = 0.0
+## Lock the player's steering until it lands after the knockback.
+@export var stun: bool = false
 
 var time := 0.0
 
@@ -34,7 +38,22 @@ func make_hitbox(shape: Shape2D, offset := Vector2.ZERO, parent: Node = self, ki
 	collision.position = offset
 	hitbox.add_child(collision)
 	parent.add_child(hitbox)
+	hitbox.area_entered.connect(_on_touch)
 	return hitbox
+
+
+func _on_touch(area: Area2D) -> void:
+	var player := area.get_parent()
+	if knockback > 0.0 and player.has_method("apply_knockback"):
+		player.apply_knockback(knockback_impulse(player), stun)
+
+
+## Knockback velocity: sideways away from the hitbox plus a hop.
+## Dead centre pushes the player back the way it faces.
+func knockback_impulse(target: Node2D) -> Vector2:
+	var dx := target.global_position.x - (find_child("Hitbox", true, false) as Node2D).global_position.x
+	var side := signf(dx) if absf(dx) >= 4.0 else -float(target.get("facing"))
+	return Vector2(side * knockback, -knockback * 0.45)
 
 
 static func rect(size: Vector2) -> RectangleShape2D:

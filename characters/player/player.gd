@@ -5,6 +5,7 @@ extends CharacterBody2D
 ## Dash, the double jump (boost_jump) and shield are sold by JARVIS (Package 2): it reads that input,
 ## pays tokens and calls the API.
 ## Pits call respawn(); checkpoints move respawn_point.
+## Lasers and blades knock the player back and lock steering until it lands (`stunned`).
 
 signal skin_changed(skin: PlayerSkin)
 
@@ -61,6 +62,8 @@ static var selected_skin: int = -1
 var facing: int = 1
 var respawn_point: Vector2
 var shielded: bool = false
+## Set by stunning hazard hits; no steering, jumping or dashing until the player lands.
+var stunned: bool = false
 
 var _skin: PlayerSkin
 var _move_direction: int = 1
@@ -126,18 +129,23 @@ func _physics_process(delta: float) -> void:
 
 func _move(delta: float) -> void:
 	var on_floor := is_on_floor()
+	# velocity.y < 0 means the knockback hop hasn't left the floor yet.
+	if on_floor and velocity.y >= 0.0:
+		stunned = false
 	if on_floor:
 		_air_jumps_left = maxi(_air_jumps_left, air_jumps) # keeps an unused boost_jump()
 		_can_air_dash = true
 
-	var input_x := Input.get_axis("move_left", "move_right")
+	var input_x := 0.0 if stunned else Input.get_axis("move_left", "move_right")
 	if _dash_time_left > 0.0: # straight horizontal burst, gravity paused
 		_dash_time_left -= delta
 		velocity = Vector2(facing * dash_speed, 0.0)
 	else:
 		if not on_floor:
 			velocity.y = minf(velocity.y + gravity * delta, max_fall_speed)
-		if Input.is_action_just_pressed("jump"):
+		if stunned:
+			pass
+		elif Input.is_action_just_pressed("jump"):
 			if on_floor:
 				velocity.y = -jump_velocity
 				_play(_jump_sound)
@@ -149,7 +157,7 @@ func _move(delta: float) -> void:
 			velocity.y *= jump_cut
 
 		var acceleration := ground_acceleration if on_floor else air_acceleration
-		if _knockback_left > 0.0: # let a hazard push play out before steering resumes
+		if _knockback_left > 0.0 or stunned: # let a hazard push play out before steering resumes
 			_knockback_left -= delta
 		else:
 			# Clamp first so dash speed doesn't carry over once the dash ends.
@@ -169,7 +177,7 @@ func _move(delta: float) -> void:
 
 ## Player API: short horizontal burst, one per airtime. Only the x sign of direction is used.
 func dash(direction: Vector2) -> void:
-	if _is_dead or _dash_cooldown_left > 0.0 or not (is_on_floor() or _can_air_dash):
+	if not can_dash():
 		return
 	if direction.x != 0.0:
 		facing = 1 if direction.x > 0.0 else -1
@@ -181,18 +189,20 @@ func dash(direction: Vector2) -> void:
 	_can_air_dash = is_on_floor()
 
 
-## Hazard API: push the player (e.g. hammer hits). Ignored while dead.
-func apply_knockback(impulse: Vector2) -> void:
+## Hazard API: push the player (e.g. hammer hits). With stun, steering stays locked until it lands.
+## Ignored while dead.
+func apply_knockback(impulse: Vector2, stun := false) -> void:
 	if _is_dead:
 		return
 	velocity = impulse
 	_dash_time_left = 0.0
 	_knockback_left = 0.2
+	stunned = stunned or stun
 
 
 ## Player API: true when dash() would start a dash right now (JARVIS checks before charging).
 func can_dash() -> bool:
-	return not _is_dead and _dash_cooldown_left <= 0.0 and (is_on_floor() or _can_air_dash)
+	return not _is_dead and not stunned and _dash_cooldown_left <= 0.0 and (is_on_floor() or _can_air_dash)
 
 
 ## Player API: last horizontal direction the player moved in (-1 or 1); the dash key dashes this way.
@@ -246,6 +256,7 @@ func respawn() -> void:
 	_dash_time_left = 0.0
 	_dash_cooldown_left = 0.0
 	_knockback_left = 0.0
+	stunned = false
 	_air_jumps_left = air_jumps
 	_can_air_dash = true
 	_camera.reset_smoothing()

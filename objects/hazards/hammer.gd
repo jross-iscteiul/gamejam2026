@@ -1,12 +1,11 @@
 @tool
 extends Hazard
 ## Pendulum hammer hanging from its origin (the pivot). The head deals 1 HP and knocks the
-## player away from the pivot through the player's apply_knockback() if it has one.
+## player away from the pivot (knockback set in hammer.tscn).
 
 @export var length := 96.0
 @export_range(10.0, 85.0) var max_angle := 60.0
 @export var period := 2.4
-@export var knockback := 320.0
 ## Seconds added to the swing clock so neighbouring hammers swing out of step.
 @export var phase := 0.0
 
@@ -21,8 +20,7 @@ func _ready() -> void:
 	_arm = Node2D.new()
 	_arm.name = "Arm"
 	add_child(_arm)
-	var hitbox := make_hitbox(rect(HEAD), Vector2(0, length), _arm)
-	hitbox.area_entered.connect(_on_hit)
+	make_hitbox(rect(HEAD), Vector2(0, length), _arm)
 
 
 func angle_at(clock: float) -> float:
@@ -34,14 +32,11 @@ func _physics_process(_delta: float) -> void:
 		_arm.rotation = angle_at(time)
 
 
-func _on_hit(area: Area2D) -> void:
-	var player := area.get_parent()
-	if not player.has_method("apply_knockback"):
-		return
-	var side := signf(player.global_position.x - global_position.x)
-	if absf(player.global_position.x - global_position.x) < 4.0: # right under the pivot: follow the swing
+func knockback_impulse(target: Node2D) -> Vector2:
+	var side := signf(target.global_position.x - global_position.x)
+	if absf(target.global_position.x - global_position.x) < 4.0: # right under the pivot: follow the swing
 		side = signf(cos(TAU * (time + phase) / (period / difficulty)))
-	player.apply_knockback(Vector2(side * knockback, -knockback * 0.45))
+	return Vector2(side * knockback, -knockback * 0.45)
 
 
 func _draw() -> void:

@@ -19,6 +19,7 @@ var step := 0
 var failures := 0
 var mark := Vector2.ZERO
 var hit_at := Vector2.INF
+var stun_seen := false
 
 
 func _ready() -> void:
@@ -55,6 +56,8 @@ func _place(at: Vector2) -> void:
 	health.restore()
 	hits = 0
 	hit_at = Vector2.INF
+	player.stunned = false
+	stun_seen = false
 
 
 func _check(ok: bool, msg: String) -> void:
@@ -64,6 +67,7 @@ func _check(ok: bool, msg: String) -> void:
 
 func _physics_process(_delta: float) -> void:
 	frame += 1
+	stun_seen = stun_seen or player.stunned
 	match [step, frame]:
 		[0, 10]: # toxic: standing in it hurts every time invincibility (0.65 s) runs out
 			_spawn(TOXIC, Vector2(160, -32), {"size": Vector2(96, 32)})
@@ -83,15 +87,34 @@ func _physics_process(_delta: float) -> void:
 			_check(hits == 0, "laser: harmless while off/warning (got %d)" % hits)
 		[1, 160]:
 			_check(hits >= 1, "laser: hurts while on (got %d)" % hits)
+			_check(hit_at != Vector2.INF and absf(player.global_position.x - hit_at.x) > 16.0,
+				"laser: knocked back (hit at x=%.0f, now x=%.0f)" % [hit_at.x, player.global_position.x])
+			_check(stun_seen and not player.stunned, "laser: stunned, then free again after landing")
 			_next()
 		[2, 1]: # blades
 			_spawn(BLADE, Vector2(1400, -14))
 			_place(Vector2(1400, -20))
 		[2, 15]:
 			_check(hits == 1, "fixed blade: 1 HP on contact (got %d)" % hits)
+			_check(absf(player.global_position.x - 1400.0) > 16.0 and stun_seen,
+				"fixed blade: knocked back and stunned (now x=%.0f)" % player.global_position.x)
 			var b: Node = _spawn(BLADE, Vector2(1600, -200), {"travel": Vector2(128, 0), "seconds_one_way": 1.0, "pause": 0.3})
 			_check(b.offset_at(1.3).is_equal_approx(Vector2(128, 0)) and b.offset_at(2.6).is_zero_approx(),
 				"track blade reaches both ends of its track")
+			_place(Vector2(600, -20))
+		[2, 60]: # stun: holding right does nothing until the player lands
+			_place(Vector2(600, -20))
+			player.apply_knockback(Vector2(-200, -200), true)
+			Input.action_press("move_right")
+			Input.action_press("jump")
+		[2, 70]:
+			_check(player.stunned and player.velocity.x == -200.0 and not player.can_dash(),
+				"stun: no steering or dash in the air (vx=%.0f)" % player.velocity.x)
+		[2, 120]:
+			_check(not player.stunned and player.velocity.x > 0.0,
+				"stun: steering back after landing (vx=%.0f)" % player.velocity.x)
+			Input.action_release("move_right")
+			Input.action_release("jump")
 			_place(Vector2(600, -20))
 			_next()
 		[3, 1]: # hammer: 1 HP and pushed away from the pivot

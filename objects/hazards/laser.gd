@@ -1,6 +1,7 @@
 @tool
 extends Hazard
 ## Timed laser beam between two emitters: off -> warning flicker (harmless) -> on (1 HP).
+## A hit knocks the player back and stuns it until it lands (knockback/stun set in laser.tscn).
 ## Origin = first emitter; the beam runs `length` px right (or down if `vertical`).
 
 @export var length := 128.0
@@ -40,6 +41,15 @@ func state_at(clock: float) -> String:
 	var on := on_time / difficulty
 	var t := fposmod(clock + phase, off + warn + on)
 	return "off" if t < off else "warn" if t < off + warn else "on"
+
+
+## A horizontal beam is crossed, not approached sideways: push back against the player's travel.
+func knockback_impulse(target: Node2D) -> Vector2:
+	if vertical:
+		return super(target)
+	var vx: float = target.get("velocity").x
+	var side := -signf(vx) if absf(vx) > 5.0 else -float(target.get("facing"))
+	return Vector2(side * knockback, -knockback * 0.45)
 
 
 func _set_beam(active: bool) -> void:
