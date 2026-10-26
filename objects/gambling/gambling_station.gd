@@ -30,6 +30,19 @@ const WHEEL_SCENE := preload("res://objects/gambling/wheel_ui.tscn")
 ## Energy outcomes scale with stake / minimum stake, up to this many times.
 ## Keeps an all-in MALWARE from wiping JARVIS (or RECHARGE from always filling him).
 @export var max_energy_scale: float = 3.0
+## REPAIR heals the player this many HP (scaled by stake like energy, same cap).
+@export var heal_amount: float = 3.0
+@export var token_multiplier: int = 2
+@export var token_multiplier_seconds: float = 60.0
+## GOD MODE (1% chance): Package 3's god mode for this long.
+@export var god_mode_seconds: float = 20.0
+
+@export_group("Higher or lower")
+## Pot multiplier per correct guess, indexed by level. Ties lose (house rule).
+@export var cards_step_multiplier: Array[float] = [1.5, 1.5, 1.4, 1.35, 1.3]
+## After this many correct guesses the pot is cashed out automatically.
+@export var cards_max_streak: int = 8
+
 @export_group("Penalties")
 ## TAX takes this many times the cost on top of the bet.
 @export var tax_multiplier: int = 1
@@ -168,7 +181,103 @@ func apply_outcome(outcome: int) -> void:
 			Dialogue.say("gambling_troll")
 		GamblingOdds.Outcome.FAKE_JACKPOT:
 			Dialogue.say("gambling_fake_jackpot")
+		GamblingOdds.Outcome.HEAL:
+			_heal_player(get_energy_amount(heal_amount))
+			Dialogue.say("gambling_win")
+		GamblingOdds.Outcome.TOKEN_MULTIPLIER:
+			GamblingBuffs.get_instance(get_tree()).start_token_multiplier(token_multiplier, token_multiplier_seconds)
+			Dialogue.say("gambling_win")
+		GamblingOdds.Outcome.GOD_MODE:
+			GamblingBuffs.get_instance(get_tree()).start_god_mode(god_mode_seconds)
+			Dialogue.say("gambling_god_mode")
 	spun.emit(outcome)
+
+
+func _heal_player(amount: float) -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	var health := player.get_node_or_null("Health") as Health if player else null
+	if health == null or health.current <= 0.0:
+		return
+	health.current = minf(health.current + amount, health.max_health)
+	health.changed.emit(health.current, health.max_health)
+
+
+# --- Higher or lower ("montinho") ---------------------------------------------
+
+## Cards are 1 (ace) to 13 (king).
+var cards: Array[int] = []
+var cards_streak := 0
+var cards_active := false
+
+
+func get_cards_step() -> float:
+	if cards_step_multiplier.is_empty():
+		return 1.5
+	return cards_step_multiplier[clampi(get_level(), 0, cards_step_multiplier.size() - 1)]
+
+
+## Current pot: stake grown by every correct guess.
+func get_cards_pot() -> int:
+	return int(floor(_stake * pow(get_cards_step(), cards_streak)))
+
+
+## Pays the stake (or uses the free spin) and deals the first card.
+## Returns false if refused (no spins, not enough tokens).
+func cards_deal(stake: int = -1) -> bool:
+	if cards_active or spins_left <= 0:
+		if spins_left <= 0:
+			Dialogue.say("gambling_out_of_spins")
+		return false
+	_spin_was_free = free_spins_left > 0
+	_stake = get_min_stake() if (_spin_was_free or stake < 0) else clamp_stake(stake)
+	if _spin_was_free:
+		free_spins_left -= 1
+	elif not GameState.spend_tokens(_stake):
+		Dialogue.say("gambling_broke")
+		return false
+	spins_left -= 1
+	_update_prompt()
+	cards = [_draw_card()]
+	cards_streak = 0
+	cards_active = true
+	Dialogue.say("cards_deal")
+	return true
+
+
+## Draws the next card. Returns true if the guess was right. A wrong guess or a
+## tie loses the pot; reaching cards_max_streak cashes out automatically.
+func cards_guess(higher: bool) -> bool:
+	if not cards_active:
+		return false
+	var last: int = cards.back()
+	var next := _draw_card()
+	cards.append(next)
+	var correct := (next > last) if higher else (next < last)
+	if not correct:
+		cards_active = false
+		Dialogue.say("cards_lose")
+		spun.emit(GamblingOdds.Outcome.NOTHING)
+		return false
+	cards_streak += 1
+	if cards_streak >= cards_max_streak:
+		cards_cash_out()
+	return true
+
+
+## Pays the pot. Only allowed after at least one correct guess.
+func cards_cash_out() -> int:
+	if not cards_active or cards_streak <= 0:
+		return 0
+	var pot := get_cards_pot()
+	GameState.add_tokens(pot)
+	cards_active = false
+	Dialogue.say("cards_cash_out")
+	spun.emit(GamblingOdds.Outcome.DOUBLE)
+	return pot
+
+
+func _draw_card() -> int:
+	return _rng.randi_range(1, 13)
 
 
 ## GameState.add_tokens ignores negative amounts, so penalties go through
@@ -199,6 +308,12 @@ func describe_outcome(outcome: int) -> String:
 			return "JARVIS FEE. -%d TKN" % jarvis_raise
 		GamblingOdds.Outcome.FAKE_JACKPOT:
 			return "ERROR: OVERCLOCK NOT FOUND. NULL."
+		GamblingOdds.Outcome.HEAL:
+			return "REPAIR. +%d HP" % get_energy_amount(heal_amount)
+		GamblingOdds.Outcome.TOKEN_MULTIPLIER:
+			return "TOKENS x%d FOR %dS!" % [token_multiplier, token_multiplier_seconds]
+		GamblingOdds.Outcome.GOD_MODE:
+			return "GOD MODE!!! %dS" % god_mode_seconds
 	return "NULL. NOTHING RETURNED."
 
 
