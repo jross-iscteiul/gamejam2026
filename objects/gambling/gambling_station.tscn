@@ -8,12 +8,14 @@
 size = Vector2(64, 56)
 
 [node name="GamblingStation" type="Node2D"]
+z_index = -1
 script = ExtResource("1_station")
 
 [node name="Visual" type="Node2D" parent="."]
 script = ExtResource("3_visual")
 
 [node name="Interactable" type="Area2D" parent="."]
+z_index = 20
 script = ExtResource("2_interact")
 prompt_text = "[E] Spin"
 prompt_offset = Vector2(0, -72)
