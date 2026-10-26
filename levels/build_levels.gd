@@ -13,6 +13,8 @@ extends Node
 ##          R lava (instant death)   W toxic waste (1 HP while inside); a run of cells = one pool
 ##          Z..z laser between two emitters (same row or column)   M swinging hammer (pivot cell)
 ##          B fixed spinning blade   S..s blade sliding between S and s (same row or column)
+##          Y lava pool with a geyser erupting up to the ceiling at random intervals
+##          X giant rolling ball (start centre of its 3x3 tiles); chases right and stops at the O gate
 ## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
 ##            all levels play MUSIC on the Music bus.
 
@@ -145,7 +147,7 @@ const LEVELS := [
 			"####################################################################################~~~~~~~~~~################",
 		],
 	},
-	{ # Level 4 - boss arena: corridor, then the gate shuts and the camera locks.
+	{ # Level 4 - boss arena: outrun the rolling ball past two lava geysers, then the gate shuts and the camera locks.
 		"fg": 2, "sky": Color(0.24, 0.18, 0.35), "difficulty": 1.0,
 		"background": "city_skyline", "background_tint": Color(0.55, 0.45, 0.75),
 		"map": [
@@ -157,10 +159,10 @@ const LEVELS := [
 			"###########################..####........####..#",
 			"###########################....................#",
 			"#.........................#....................#",
-			"#..P......................O......######........#",
-			"#.........................O....................#",
+			"#....P....................O......######........#",
+			"#.X.......................O....................#",
 			"#.........................O...T...........K....#",
-			"############R#######R###########################",
+			"############Y#######Y###########################",
 			"################################################",
 		],
 	},
@@ -178,6 +180,8 @@ var toxic_scene: PackedScene = load("res://objects/hazards/toxic.tscn")
 var laser_scene: PackedScene = load("res://objects/hazards/laser.tscn")
 var hammer_scene: PackedScene = load("res://objects/hazards/hammer.tscn")
 var blade_scene: PackedScene = load("res://objects/hazards/blade.tscn")
+var geyser_scene: PackedScene = load("res://objects/hazards/geyser.tscn")
+var boulder_scene: PackedScene = load("res://objects/hazards/boulder.tscn")
 const MUSIC := "res://assets/audio/music/cyberpunk_street.ogg"
 
 
@@ -282,11 +286,19 @@ func _build_level(index: int, tileset: TileSet) -> void:
 						var glow = _add(root, lava_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
 						glow.size = Vector2(_run(map, p) * TILE, TILE)
 						glow.damaging = false # the Pit trigger handles it (instant reset, bypasses shields)
-				"R", "W":
+				"R", "W", "Y":
 					if map[y][x - 1] != ch: # one pool per run of cells
-						var pool = _add(root, (lava_scene if ch == "R" else toxic_scene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
+						var pool = _add(root, (toxic_scene if ch == "W" else lava_scene).instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
 						pool.size = Vector2(_run(map, p) * TILE, TILE)
 						pool.difficulty = difficulty
+						if ch == "Y":
+							var geyser = _add(root, geyser_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), Vector2(p * TILE))
+							geyser.width = pool.size.x
+							var up := 1
+							while map[y - up][x] != "#":
+								up += 1
+							geyser.height = (up - 1) * TILE
+				"X": nodes.boulder = _add(root, boulder_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 				"Z":
 					var end := _pair_end(map, p, "z")
 					var first := Vector2i(mini(p.x, end.x), mini(p.y, end.y))
@@ -340,6 +352,9 @@ func _build_level(index: int, tileset: TileSet) -> void:
 	root.move_child(nodes.player, -1)
 	if nodes.has("lever"):
 		nodes.lever.gate = gates["G"]
+	if nodes.has("boulder"): # roll until the ball touches the O gate
+		nodes.boulder.gate = gates["O"]
+		nodes.boulder.distance = gates["O"].position.x - TILE / 2.0 - nodes.boulder.position.x - nodes.boulder.RADIUS
 	if nodes.has("trigger"):
 		var gate_x: int = floori(gates["O"].position.x / TILE)
 		nodes.trigger.gate = gates["O"]
