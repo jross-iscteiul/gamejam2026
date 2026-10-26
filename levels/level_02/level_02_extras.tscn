@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://objects/roasting/roast_director.gd" id="1_roast"]
 [ext_resource type="PackedScene" path="res://objects/gambling/gambling_station.tscn" id="2_station"]
+
+[ext_resource type="Script" path="res://objects/sfx/game_sfx.gd" id="9_sfx"]
 
 [node name="Level02Extras" type="Node2D"]
 
@@ -15,3 +17,6 @@ free_spins = 1
 [node name="GamblingStation2" parent="." instance=ExtResource("2_station")]
 position = Vector2(624, 672)
 free_spins = 1
+
+[node name="GameSfx" type="Node" parent="."]
+script = ExtResource("9_sfx")
