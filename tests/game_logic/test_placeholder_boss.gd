@@ -217,7 +217,8 @@ func _run() -> void:
 	_check(boss._active and hud._boss_box.visible and hud._boss.value == 10, "arena entry activates the robot and shows its health")
 	_check(hud._boss_compact and hud._boss_box.offset_top > 0.0, "the Foreman's bar is tucked into the top corner")
 	var doors := get_tree().get_nodes_in_group("minion_door")
-	_check(doors.size() == 1 and doors[0].active, "arena entry opens the minion door for business")
+	_check(doors.size() == 2 and doors.all(func(door: Node) -> bool: return door.active),
+		"arena entry opens both minion doors (left and right) for business")
 	await _capture("boss_robot_arena")
 	await _shoot(boss, player)
 	_check(health.current == 9 and hud._boss.value == 9, "real player projectiles update boss health and HUD")

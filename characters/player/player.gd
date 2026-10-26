@@ -350,6 +350,7 @@ func take_damage(amount: float, source: Node = null) -> void:
 func _on_died(_source: Node) -> void:
 	_is_dead = true
 	velocity = Vector2(0.0, -death_pop_velocity) # knocked up; the dead physics brings him down
+	set_shield(false) # a dead player drops the shield straight away, not at the respawn
 	collision_layer = 0
 	_hurtbox.set_deferred("monitoring", false)
 	_hurtbox.set_deferred("monitorable", false)

@@ -60,6 +60,27 @@ position = Vector2(1392, 328)
 [node name="small20" parent="." instance=ExtResource("2")]
 position = Vector2(1456, 328)
 
+[node name="floor1" parent="." instance=ExtResource("2")]
+position = Vector2(944, 328)
+
+[node name="floor2" parent="." instance=ExtResource("2")]
+position = Vector2(976, 328)
+
+[node name="floor3" parent="." instance=ExtResource("2")]
+position = Vector2(1040, 328)
+
+[node name="floor4" parent="." instance=ExtResource("2")]
+position = Vector2(1072, 328)
+
+[node name="floor5" parent="." instance=ExtResource("2")]
+position = Vector2(1136, 328)
+
+[node name="floor6" parent="." instance=ExtResource("2")]
+position = Vector2(1168, 328)
+
+[node name="floor7" parent="." instance=ExtResource("2")]
+position = Vector2(1200, 328)
+
 [node name="enemy1" parent="." instance=ExtResource("4")]
 position = Vector2(496, 336)
 patrol_distance = 48.0
@@ -71,7 +92,7 @@ patrol_distance = 48.0
 fire_interval = 1.9
 
 [node name="enemy3" parent="." instance=ExtResource("4")]
-position = Vector2(1104, 240)
+position = Vector2(1104, 336)
 patrol_distance = 48.0
 fire_interval = 1.9
 
@@ -81,6 +102,6 @@ patrol_distance = 48.0
 fire_interval = 1.9
 
 [node name="enemy5" parent="." instance=ExtResource("4")]
-position = Vector2(1392, 144)
+position = Vector2(1424, 336)
 patrol_distance = 48.0
 fire_interval = 1.9

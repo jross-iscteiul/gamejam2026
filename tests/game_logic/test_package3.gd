@@ -246,7 +246,7 @@ func _test_live_gameplay() -> void:
 	_check(health.current == health.max_health, "current player dash grants invulnerability")
 	await _frames(15)
 	player.take_damage(99, self)
-	await _frames(35)
+	await _frames(90) # the death animation lingers about 1.15 s before the respawn
 	_check(_deaths == 1 and health.current == health.max_health, "lethal damage emits one death and restores health")
 	_check(player.collision_layer == 2 and player.get_node("GunPivot").visible, "respawn restores player collisions and gun")
 	# Existing pit implementation must bypass shields and respawn once as before.

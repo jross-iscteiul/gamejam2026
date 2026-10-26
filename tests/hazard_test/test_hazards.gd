@@ -195,7 +195,7 @@ func _physics_process(_delta: float) -> void:
 			_check(not died and hits == 0, "geyser: harmless while idle/warning")
 		[6, 80]:
 			_check(died, "geyser: eruption kills")
-		[6, 110]: # let the death fall play out and respawn the player before the next test
+		[6, 170]: # let the death animation (~1.15 s) play out and respawn the player before the next test
 			_next()
 		[7, 1]: # boulder: waits 0.5 s, eases to 200 px/s over 0.5 s, stops after 300 px
 			boulder = _spawn(BOULDER, Vector2(4000, -48), {"delay": 0.5, "speed": 200.0, "accel_time": 0.5, "distance": 300.0})
@@ -208,13 +208,13 @@ func _physics_process(_delta: float) -> void:
 			_check(boulder.position.x == 4000.0, "boulder: still waiting at the start")
 		[7, 105]:
 			_check(died, "boulder: crushes the player")
-		[7, 125]: # the player has respawned by now, which sends the ball back to the start
+		[7, 185]: # the player has respawned by now (~1.15 s death), which sends the ball back to the start
 			_check(boulder.position.x < 4010.0, "boulder: back at the start after the respawn (x=%.0f)" % boulder.position.x)
-		[7, 270]:
+		[7, 330]:
 			_check(boulder.position.x == 4300.0, "boulder: stops at the end of its run (x=%.0f)" % boulder.position.x)
 			boulder.gate = _spawn(GATE, Vector2(5000, -80), {"closed": true})
 			GameState.player_respawned.emit()
-		[7, 275]:
+		[7, 335]:
 			_check(boulder.position.x == 4300.0, "boulder: stays put on respawn once the gate is closed")
 			print("%d failures" % failures)
 			get_tree().quit(failures)
