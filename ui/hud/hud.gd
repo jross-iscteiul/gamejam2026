@@ -334,8 +334,8 @@ func _update_boss_label(label: String) -> void:
 	_layout_bottom_bars()
 
 
-## The game is over: let the arena go dark, then roll the credits. After them a full run goes
-## to the leaderboard submission, a practice run back to the menu.
+## The game is over: let the arena go dark, then roll the credits, then the leaderboard (with
+## the submission form on a full run).
 func _boss_defeated() -> void:
 	_boss_box.hide()
 	notify("BOSS DEFEATED")
@@ -368,11 +368,8 @@ func play_credits() -> void:
 
 func _after_credits() -> void:
 	credits.queue_free()
-	if GameState.run_clock.eligible:
-		set_paused(true)
-		_show_leaderboard()
-	else:
-		_main_menu()
+	set_paused(true)
+	_show_leaderboard()
 
 
 func _say(text: String, _mood: String) -> void:
