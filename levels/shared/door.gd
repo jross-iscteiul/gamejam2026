@@ -83,6 +83,7 @@ func _collapse() -> void:
 	_phase = "done"
 	set_process(false)
 	GameState.level_completed.emit(GameState.current_level)
+	GameState.arrived_by_trap = true
 	get_tree().change_scene_to_file.call_deferred(next_level)
 
 
@@ -168,7 +169,6 @@ func _draw_collapsed() -> void:
 	draw_set_transform(Vector2(10, 16 + drop), fall * 0.6)
 	draw_rect(Rect2(-6, -30, 12, 30), Color(FRAME, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0)
-	draw_rect(Rect2(-16, -8, 32, 200), VOID) # the hole left behind
 	for i in 5:
 		var seed := float(i) * 1.7
 		var y := fposmod(_phase_t * (90.0 + i * 14.0) + seed * 40.0, 220.0) - 8.0
