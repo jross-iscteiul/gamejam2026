@@ -1,7 +1,8 @@
 @tool
 extends Hazard
 ## Pendulum hammer hanging from its origin (the pivot). The head deals 1 HP and knocks the
-## player away from the pivot (knockback set in hammer.tscn).
+## player away from the pivot (knockback set in hammer.tscn). The handle is solid (world layer):
+## it can't be walked or jumped through and pushes the player as it swings.
 
 @export var length := 96.0
 @export_range(10.0, 85.0) var max_angle := 60.0
@@ -10,8 +11,12 @@ extends Hazard
 @export var phase := 0.0
 
 const HEAD := Vector2(26, 20)
+## Solid handle: width, and the gap left at the pivot end.
+const HANDLE_WIDTH := 6.0
+const HANDLE_START := 6.0
 
 var _arm: Node2D
+var _handle: AnimatableBody2D
 
 
 func _ready() -> void:
@@ -21,6 +26,24 @@ func _ready() -> void:
 	_arm.name = "Arm"
 	add_child(_arm)
 	make_hitbox(rect(HEAD), Vector2(0, length), _arm)
+	_add_handle()
+
+
+## Moving solid along the handle, from just below the pivot to the top of the head.
+## A direct child rotated every physics frame (see _physics_process): an AnimatableBody2D only
+## reaches the physics server when its own transform changes, not when a parent rotates.
+func _add_handle() -> void:
+	_handle = AnimatableBody2D.new()
+	_handle.name = "Handle"
+	_handle.collision_layer = 1 # world: blocks the player like a wall
+	_handle.collision_mask = 0
+	_handle.sync_to_physics = true
+	var handle_end := length - HEAD.y / 2.0
+	var collision := CollisionShape2D.new()
+	collision.shape = rect(Vector2(HANDLE_WIDTH, handle_end - HANDLE_START))
+	collision.position = Vector2(0, (HANDLE_START + handle_end) / 2.0)
+	_handle.add_child(collision)
+	add_child(_handle)
 
 
 func angle_at(clock: float) -> float:
@@ -30,6 +53,7 @@ func angle_at(clock: float) -> float:
 func _physics_process(_delta: float) -> void:
 	if not Engine.is_editor_hint():
 		_arm.rotation = angle_at(time)
+		_handle.rotation = _arm.rotation # synced to physics, pushes what it sweeps into
 
 
 func knockback_impulse(target: Node2D) -> Vector2:
