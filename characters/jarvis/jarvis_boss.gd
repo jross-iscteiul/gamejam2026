@@ -6,6 +6,8 @@ extends Node
 ## shooting and ability code is disabled while Jarvis.hostile is true.
 
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
+const Fireball := preload("res://characters/jarvis/fireball.gd")
+const Missile := preload("res://characters/jarvis/missile.gd")
 
 @export var max_health: float = 12.0
 ## Armoured: it is three machines in one, so player shots land at this fraction of their damage.
@@ -45,6 +47,24 @@ const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 @export var mech_hop_chance: float = 0.25 # per second: random hops so he is hard to pin down
 ## Collision box of the walking machine, in chassis units (scaled by the mech's size).
 @export var mech_body_size: Vector2 = Vector2(44.0, 92.0)
+@export_group("Shield")
+## The units in the mech's pods power a shield: while any of them is standing, shots at the
+## machine do nothing. Pop them all and the shield drops for a while, then new units fly in.
+@export var pod_health: float = 4.0
+@export var pod_hit_radius: float = 16.0 # in the unit's own space (it rides the mech small)
+@export var shield_down_seconds: float = 7.0
+@export var shield_radius: float = 58.0 # in chassis units
+@export var shield_color: Color = Color(0.45, 0.8, 1.0)
+@export_group("Barrage")
+## Popping a pod rains fireballs down from the top of the screen around the player.
+@export var barrage_fireballs: int = 7
+@export var barrage_spacing: float = 0.12
+@export var barrage_spread: float = 140.0
+@export var barrage_warning: float = 0.4
+@export_group("Missiles")
+@export var missile_every: int = 3 # every Nth attack is a missile salvo
+@export var missile_count: int = 2
+@export var missile_spacing: float = 0.25
 @export_group("Talk")
 @export var taunt_interval_min: float = 7.0
 @export var taunt_interval_max: float = 12.0
@@ -70,6 +90,11 @@ var _air_jumps_left: int = 0
 var _dash_left: float = 0.0
 var _dash_direction: float = 1.0
 var _home := Vector2.ZERO # safe spot to put him back if he ever falls out of the arena
+## Units in the pods still holding the shield up, and their hurtboxes.
+var _pods: Array[Node2D] = []
+var _pod_boxes: Array[PodHurtbox] = []
+var shield_up: bool = false
+var _shield_fx: Node2D
 
 
 func _ready() -> void:
@@ -80,6 +105,10 @@ func _ready() -> void:
 	_build_damage_nodes()
 	if _jarvis.mech != null:
 		_build_walker()
+		_build_shield_fx()
+		for i in _jarvis.assembled_units.size():
+			_arm_pod(_jarvis.assembled_units[i])
+		_raise_shield()
 	GameState.boss_label_changed.emit("JARVIS")
 	_health.changed.emit(_health.current, _health.max_health)
 
@@ -255,7 +284,9 @@ func _attack(delta: float) -> void:
 	_volleys += 1
 	if _walker != null:
 		_attack_left = mech_shot_interval
-		if _volleys % 4 == 0 and _walker.is_on_floor():
+		if _volleys % missile_every == 0:
+			_missiles()
+		elif _volleys % 4 == 0 and _walker.is_on_floor():
 			_start_dash()
 		else:
 			_burst()
@@ -295,6 +326,182 @@ func _burst() -> void:
 		get_tree().current_scene.add_child(shot)
 		shot.global_position = origin
 		await get_tree().create_timer(volley_spacing).timeout
+
+
+## Missile salvo out of the shoulder pods: they climb, then home in on the player.
+func _missiles() -> void:
+	for i in missile_count:
+		if _dead or not is_instance_valid(_jarvis.player):
+			return
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var missile: Area2D = Missile.new()
+		missile.source = _jarvis
+		missile.target = _jarvis.player
+		missile.direction = Vector2(side * 0.4, -1.0).normalized()
+		get_tree().current_scene.add_child(missile)
+		missile.global_position = _jarvis.mech.to_global(Vector2(side * 28.0, -24.0))
+		await get_tree().create_timer(missile_spacing).timeout
+
+
+#region Shield
+## Hurtbox of one pod. The shoulder pods sit on either side of the machine and the shield
+## covers its back, so a shoulder pod only takes shots that come from its own side: the player
+## has to cross over to reach the far one. The chest pod takes shots from either side.
+class PodHurtbox extends Hurtbox:
+	var mech: Node2D
+	## World side the pod is pinned to (-1, 0, 1), fixed when it is armed: the chassis turns
+	## to face the player, but the pods must not swap sides with it or the back one could
+	## never be reached.
+	var pinned_side: float = 0.0
+	signal blocked
+
+	## Keeps the unit on its pinned side however the chassis is facing.
+	func pin() -> void:
+		var unit := get_parent() as Node2D
+		if pinned_side != 0.0:
+			unit.position.x = absf(unit.position.x) * pinned_side * signf(mech.scale.x)
+
+	## Which side of the machine the pod is on right now: -1 left, 1 right, 0 middle. The
+	## chassis flips to face the player, so this changes when the player crosses over.
+	func side() -> float:
+		var offset: float = (get_parent() as Node2D).global_position.x - mech.global_position.x
+		return 0.0 if absf(offset) < 4.0 else signf(offset)
+
+	## [param from]: which side the shot came from (-1 left, 1 right).
+	func accepts_from(from: float) -> bool:
+		return side() == 0.0 or side() == from
+
+	func receive_hit(hitbox: Hitbox) -> void:
+		var travel: Variant = hitbox.get("direction")
+		var from := -signf(travel.x) if travel is Vector2 and not is_zero_approx(travel.x) \
+			else signf(hitbox.global_position.x - mech.global_position.x)
+		if not accepts_from(from):
+			blocked.emit()
+			return
+		super(hitbox)
+
+
+## A unit in a pod becomes a shield generator: it gets its own health and a hurtbox on the
+## enemy layer, so player shots that hit it count.
+func _arm_pod(unit: Node2D) -> void:
+	if not is_instance_valid(unit):
+		return
+	var health := Health.new()
+	health.name = "PodHealth"
+	health.max_health = pod_health
+	health.invincibility_duration = 0.05
+	unit.add_child(health)
+	var hurtbox := PodHurtbox.new()
+	hurtbox.mech = _jarvis.mech
+	hurtbox.blocked.connect(_flash_shield)
+	hurtbox.name = "PodHurtbox"
+	if absf(unit.position.x) >= 4.0:
+		hurtbox.pinned_side = signf(unit.global_position.x - _jarvis.mech.global_position.x)
+	hurtbox.health = health
+	hurtbox.collision_layer = 4
+	hurtbox.collision_mask = 8
+	var collider := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = pod_hit_radius
+	collider.shape = circle
+	hurtbox.add_child(collider)
+	unit.add_child(hurtbox)
+	health.damaged.connect(func(_amount: float, _source: Node) -> void:
+		unit.modulate = Color(2.0, 2.0, 2.0)
+		unit.create_tween().tween_property(unit, "modulate", _jarvis.hostile_color, 0.15))
+	health.died.connect(_pop_pod.bind(unit, hurtbox))
+	_pods.append(unit)
+	_pod_boxes.append(hurtbox)
+
+
+func _pop_pod(_killer: Node, unit: Node2D, hurtbox: PodHurtbox) -> void:
+	if _dead:
+		return
+	_pods.erase(unit)
+	_pod_boxes.erase(hurtbox)
+	_jarvis.assembled_units.erase(unit)
+	_disable_area(hurtbox)
+	var tween := unit.create_tween().set_parallel()
+	tween.tween_property(unit, "scale", unit.scale * 1.8, 0.25)
+	tween.tween_property(unit, "modulate", Color(2.0, 1.4, 0.6, 0.0), 0.25)
+	tween.chain().tween_callback(unit.queue_free)
+	_jarvis._shake_camera(5.0, 0.2)
+	_barrage()
+	if _pods.is_empty():
+		_drop_shield()
+
+
+## All pods gone: the machine is exposed until fresh units have been slotted back in.
+func _drop_shield() -> void:
+	shield_up = false
+	_health.invulnerable = false
+	_hurtbox.set_deferred("monitoring", true)
+	_hurtbox.set_deferred("monitorable", true)
+	_shield_fx.hide()
+	get_tree().call_group("game_hud", "notify", "SHIELD DOWN")
+	if not _jarvis.bubble.is_talking():
+		_jarvis.bubble.say(Dialogue.get_line("hostile_shield_down", GameState.current_level), "furious")
+	await get_tree().create_timer(shield_down_seconds).timeout
+	if _dead:
+		return
+	for i in _jarvis.betrayal_assembly_units:
+		var unit := _jarvis._spare_unit(i)
+		await _jarvis._mount_unit(unit, i)
+		if _dead:
+			return
+		_arm_pod(unit)
+	_raise_shield()
+	if not _jarvis.bubble.is_talking():
+		_jarvis.bubble.say(Dialogue.get_line("hostile_shield_up", GameState.current_level), "furious")
+
+
+## Shield on: the body hurtbox is switched off entirely, so shots fly through to the pods
+## instead of being soaked up by the big box around the machine.
+func _raise_shield() -> void:
+	shield_up = true
+	_health.invulnerable = true
+	_hurtbox.set_deferred("monitoring", false)
+	_hurtbox.set_deferred("monitorable", false)
+	_shield_fx.show()
+
+
+## A shot from the wrong side splashes off the shield.
+func _flash_shield() -> void:
+	_shield_fx.modulate = Color(2.0, 2.0, 2.0)
+	_shield_fx.create_tween().tween_property(_shield_fx, "modulate", Color.WHITE, 0.15)
+
+
+func _disable_area(area: Area2D) -> void:
+	area.set_deferred("monitoring", false)
+	area.set_deferred("monitorable", false)
+
+
+func _build_shield_fx() -> void:
+	_shield_fx = Node2D.new()
+	_shield_fx.name = "ShieldFx"
+	_jarvis.mech.add_child(_shield_fx)
+	_shield_fx.draw.connect(func() -> void:
+		var centre := Vector2(0.0, -4.0)
+		var pulse := 0.5 + 0.5 * sin(_time * 5.0)
+		_shield_fx.draw_circle(centre, shield_radius, Color(shield_color, 0.08 + 0.05 * pulse))
+		_shield_fx.draw_arc(centre, shield_radius, 0.0, TAU, 48, Color(shield_color, 0.5 + 0.3 * pulse), 2.0))
+
+
+## Fireballs rain from the top of the screen around the player, one after another.
+func _barrage() -> void:
+	var view := get_viewport().get_canvas_transform().affine_inverse() * get_viewport().get_visible_rect()
+	for i in barrage_fireballs:
+		if _dead or not is_instance_valid(_jarvis.player):
+			return
+		var x := clampf(_jarvis.player.global_position.x + _rng.randf_range(-barrage_spread, barrage_spread),
+			view.position.x + 8.0, view.end.x - 8.0)
+		var fireball: Area2D = Fireball.new()
+		fireball.source = _jarvis
+		fireball.warning = barrage_warning
+		get_tree().current_scene.add_child(fireball)
+		fireball.global_position = Vector2(x, view.position.y + 6.0)
+		await get_tree().create_timer(barrage_spacing).timeout
+#endregion
 
 
 ## Dash at the player along the ground, like the player's own dash.
@@ -353,6 +560,10 @@ func _animate(delta: float) -> void:
 	mech.airborne = _walker != null and not _walker.is_on_floor()
 	var lean := 0.0 if _dash_left <= 0.0 else deg_to_rad(10.0 * _jarvis.facing)
 	mech.rotation = lerp_angle(mech.rotation, lean, 1.0 - exp(-12.0 * delta))
+	for box in _pod_boxes:
+		box.pin()
+	if _shield_fx != null and _shield_fx.visible:
+		_shield_fx.queue_redraw()
 
 
 func _on_damaged(_amount: float, _source: Node) -> void:
@@ -374,6 +585,10 @@ func _die(killer: Node) -> void:
 	for area: Area2D in [_hurtbox, _contact]:
 		area.set_deferred("monitoring", false)
 		area.set_deferred("monitorable", false) # the player's hurtbox watches for us, not the reverse
+	for box in _pod_boxes:
+		_disable_area(box)
+	if _shield_fx != null:
+		_shield_fx.hide()
 	_jarvis.body.set_face("off")
 	_jarvis.body.power = 0.0
 	_jarvis.bubble.say(Dialogue.get_line("hostile_defeat", GameState.current_level), "offline")
@@ -403,6 +618,9 @@ func _die(killer: Node) -> void:
 ## powers down with him instead of fighting on.
 func _black_out() -> void:
 	get_tree().call_group("minion_door", "shut_down")
+	# Missiles still in the air would land and drop fresh minions after the fact.
+	for projectile in get_tree().get_nodes_in_group("enemy_projectile"):
+		projectile.queue_free()
 	for enemy in get_tree().get_nodes_in_group("enemy"):
 		if enemy != _jarvis and enemy.has_method("shut_down"):
 			enemy.shut_down()

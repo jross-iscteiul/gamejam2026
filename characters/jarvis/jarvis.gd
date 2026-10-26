@@ -528,6 +528,7 @@ func betray(anchor: Vector2) -> void:
 		return
 	betraying = true
 	GameState.jarvis_hostile = true # cuts the abilities, the trust decay and the feed button
+	_clear_tokens()
 	if is_instance_valid(player):
 		player.set_shield(false)
 	bubble.clear()
@@ -720,6 +721,19 @@ func _betrayal_line(lines: PackedStringArray, index: int, line_mood: String) -> 
 	bubble.chars_per_second = cps
 	bubble.hold_seconds = hold
 	bubble.hold_per_char = per_char
+
+
+## Nothing left to feed him with: every coin lying around fades out as he turns.
+func _clear_tokens() -> void:
+	for token: Node in get_tree().get_nodes_in_group("token"):
+		if not token is Node2D or token.is_queued_for_deletion():
+			continue
+		token.remove_from_group("token")
+		token.set_deferred("monitoring", false)
+		token.set_deferred("monitorable", false)
+		var tween := token.create_tween()
+		tween.tween_property(token, "modulate:a", 0.0, 0.4)
+		tween.tween_callback(token.queue_free)
 
 
 func _shake_camera(strength: float, duration: float) -> void:

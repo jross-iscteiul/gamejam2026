@@ -17,6 +17,14 @@ var _boss_label: Label
 ## small bar tucked into the top-right corner, out of the way of the fight.
 const MAIN_BOSS_LABELS: PackedStringArray = ["JARVIS"]
 var _boss_compact: bool = false
+const CREDITS := preload("res://ui/credits/credits.tscn")
+## Seconds between the boss going down and the credits fading in, so the shutdown can play.
+const CREDITS_DELAY := 2.5
+var credits: Control
+var _credits_played: bool = false
+## TEMPORARY preview: rolls the credits as soon as chapter 4 loads. Set to false (or delete)
+## before shipping; it also breaks the level 4 tests.
+const PREVIEW_CREDITS_ON_LEVEL_4 := false
 var _boss: ProgressBar
 var _speech: Label
 var _notice: Label
@@ -51,6 +59,9 @@ func _ready() -> void:
 	GameState.jarvis_enabled_changed.connect(func(_enabled: bool) -> void: _update_energy(GameState.energy))
 	GameState.god_mode_changed.connect(_on_god_mode_changed)
 	GameState.boss_health_changed.connect(_update_boss)
+	GameState.player_died.connect(_flash_death)
+	if PREVIEW_CREDITS_ON_LEVEL_4:
+		_preview_credits.call_deferred()
 	GameState.boss_label_changed.connect(_update_boss_label)
 	GameState.boss_defeated.connect(_boss_defeated)
 	GameState.jarvis_say.connect(_say)
@@ -283,13 +294,27 @@ func _layout_bottom_bars() -> void:
 		_boss_label.add_theme_font_size_override("font_size", 16)
 		_boss.custom_minimum_size.y = 14
 		return
-	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	# The main boss bar runs along the top, right under the HUD panel, clear of the fight.
+	_boss_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_boss_box.offset_left = -420
 	_boss_box.offset_right = 420
-	_boss_box.offset_top = -480 if _touch_controls.visible else -240
-	_boss_box.offset_bottom = -392 if _touch_controls.visible else -152
+	_boss_box.offset_top = 132
+	_boss_box.offset_bottom = 200
 	_boss_label.add_theme_font_size_override("font_size", 24)
 	_boss.custom_minimum_size.y = 32
+
+
+## A red flash over the whole screen so a death is impossible to miss.
+func _flash_death() -> void:
+	var flash := ColorRect.new()
+	flash.color = Color(0.9, 0.1, 0.1, 0.45)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.add_child(flash)
+	_root.move_child(flash, 0) # under the HUD panels
+	var tween := flash.create_tween()
+	tween.tween_property(flash, "color:a", 0.0, 0.6).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(flash.queue_free)
 
 
 func _update_boss(value: float, maximum: float) -> void:
@@ -309,12 +334,45 @@ func _update_boss_label(label: String) -> void:
 	_layout_bottom_bars()
 
 
+## The game is over: let the arena go dark, then roll the credits. After them a full run goes
+## to the leaderboard submission, a practice run back to the menu.
 func _boss_defeated() -> void:
 	_boss_box.hide()
 	notify("BOSS DEFEATED")
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and "input_locked" in player:
+		player.input_locked = true
+	await get_tree().create_timer(CREDITS_DELAY).timeout
+	play_credits()
+
+
+## TEMPORARY: see PREVIEW_CREDITS_ON_LEVEL_4.
+func _preview_credits() -> void:
+	var scene := get_tree().current_scene
+	if scene != null and scene.scene_file_path.contains("level_04"):
+		play_credits()
+
+
+func play_credits() -> void:
+	if _credits_played: # only once, even if the delayed call lands after a manual one
+		return
+	_credits_played = true
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null and "input_locked" in player:
+		player.input_locked = true
+	_touch_controls.hide()
+	credits = CREDITS.instantiate()
+	_root.add_child(credits)
+	credits.finished.connect(_after_credits)
+
+
+func _after_credits() -> void:
+	credits.queue_free()
 	if GameState.run_clock.eligible:
 		set_paused(true)
 		_show_leaderboard()
+	else:
+		_main_menu()
 
 
 func _say(text: String, _mood: String) -> void:

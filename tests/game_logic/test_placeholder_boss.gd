@@ -91,6 +91,11 @@ func _check_arena_death(scene: Node, player: Player) -> void:
 
 
 
+func _count_projectiles(script: Script) -> int:
+	return get_tree().get_nodes_in_group("enemy_projectile").filter(
+		func(node: Variant) -> bool: return node.get_script() == script).size()
+
+
 ## Last phase: the boss hands the fight to JARVIS, who switches sides. Skips the speech
 ## timings so the betrayal animation does not stall the suite, then shoots him down.
 func _defeat_through_jarvis(player: Node2D) -> Jarvis:
@@ -120,6 +125,48 @@ func _defeat_through_jarvis(player: Node2D) -> Jarvis:
 	_check(landed, "the mech stands on the ground like the player")
 	_check(absf(jarvis.mech.scale.y) <= 0.8, "the mech is small enough for the floating islands")
 	var health := jarvis.get_node("BossHealth") as Health
+	var fight := jarvis.get_node("JarvisBoss") as JarvisBoss
+	await _frames()
+	_check(fight.shield_up and fight._pods.size() == 3, "the three pod units hold up a shield")
+	hurtbox.take_damage(health.max_health, player)
+	_check(health.current == health.max_health, "the shield blocks damage to the mech")
+	fight._missiles()
+	await _frames(2)
+	_check(_count_projectiles(JarvisBoss.Missile) > 0, "the mech fires homing missiles")
+	var spawned: Array[Node] = []
+	var watch := func(node: Node) -> void:
+		if node.scene_file_path == "res://ui/placeholder_enemy/robot.tscn":
+			spawned.append(node)
+	get_tree().node_added.connect(watch)
+	var drop: Area2D = JarvisBoss.Missile.new()
+	drop.direction = Vector2.DOWN
+	drop.arm_seconds = 99.0 # straight down, no homing
+	drop.speed = 300.0
+	drop.max_minions = 99
+	get_tree().current_scene.add_child(drop)
+	# Beside the player, who stands on the arena floor: solid ground, clear of their hurtbox.
+	drop.global_position = player.global_position + Vector2(48.0, -40.0)
+	await _frames(40)
+	get_tree().node_added.disconnect(watch)
+	_check(spawned.size() == 1, "a missile that hits the floor drops a new minion there")
+	var sides := fight._pod_boxes.map(func(box: Variant) -> float: return box.side())
+	_check(sides.has(-1.0) and sides.has(0.0) and sides.has(1.0), "the pods sit left, middle and right")
+	var shoulder: Variant = fight._pod_boxes[sides.find(-1.0)]
+	var chest: Variant = fight._pod_boxes[sides.find(0.0)]
+	_check(shoulder.accepts_from(-1.0) and not shoulder.accepts_from(1.0),
+		"a shoulder pod only takes shots from its own side")
+	_check(chest.accepts_from(-1.0) and chest.accepts_from(1.0), "the chest pod takes shots from either side")
+	jarvis.mech.scale.x = -jarvis.mech.scale.x # he turns around to face the other way
+	shoulder.pin()
+	_check(shoulder.side() == -1.0, "the shoulder pods keep their side when the mech turns around")
+	(fight._pods[0].get_node("PodHealth") as Health).kill(player)
+	await _frames(3)
+	_check(_count_projectiles(JarvisBoss.Fireball) > 0, "popping a pod rains fireballs")
+	_check(fight.shield_up, "the shield holds while any pod is left")
+	for pod in fight._pods.duplicate():
+		(pod.get_node("PodHealth") as Health).kill(player)
+	await _frames(2)
+	_check(not fight.shield_up and not health.invulnerable, "popping every pod drops the shield")
 	var others := get_tree().get_nodes_in_group("enemy").filter(
 		func(node: Variant) -> bool: return node != jarvis and not jarvis.assembled_units.has(node))
 	while health.current > 0.0:
@@ -170,7 +217,8 @@ func _run() -> void:
 	_check(boss._active and hud._boss_box.visible and hud._boss.value == 10, "arena entry activates the robot and shows its health")
 	_check(hud._boss_compact and hud._boss_box.offset_top > 0.0, "the Foreman's bar is tucked into the top corner")
 	var doors := get_tree().get_nodes_in_group("minion_door")
-	_check(doors.size() == 1 and doors[0].active, "arena entry opens the minion door for business")
+	_check(doors.size() == 2 and doors.all(func(door: Node) -> bool: return door.active),
+		"arena entry opens both minion doors (left and right) for business")
 	await _capture("boss_robot_arena")
 	await _shoot(boss, player)
 	_check(health.current == 9 and hud._boss.value == 9, "real player projectiles update boss health and HUD")
@@ -179,6 +227,8 @@ func _run() -> void:
 	for i in 5:
 		await _shoot(boss, player)
 	_check(boss._final_phase and _victories == 0, "the robot gives up at its last phase instead of dying")
+	_check(boss.collision_layer == 0 and not boss.get_node("Hurtbox").monitorable,
+		"the downed Foreman lies on the floor and shots pass through him")
 	_check(not hud._boss_box.visible, "the Foreman's health bar is hidden during the handover")
 	await _defeat_through_jarvis(player)
 	_check(hud._boss_label.text == "JARVIS", "the turncoat takes over the boss health bar")
@@ -187,6 +237,8 @@ func _run() -> void:
 	_check(_victories == 1 and not is_instance_valid(boss), "shooting the turncoat JARVIS down ends the fight exactly once")
 	_check(not GameState.run_clock.eligible and client.pending_result.is_empty() and not get_tree().paused, "chapter victory stays practice and offers no leaderboard submission")
 	_check(not hud._boss_box.visible and not scene.get_node("BossTrigger/Banner").visible, "victory clears the boss bar and arena banner")
+	await get_tree().create_timer(hud.CREDITS_DELAY + 0.2).timeout
+	_check(hud.credits != null and hud.credits.crawl.text.contains("THE END"), "the end credits roll after the final boss")
 
 	# Visit the real doors in order, retaining the clock and authenticated checkpoints.
 	GameState.reset_run()
@@ -212,6 +264,9 @@ func _run() -> void:
 	_check(_victories == 2 and GameState.run_clock.state == RunClock.State.FINISHED, "full-run boss victory stops the clock once")
 	_check(LeaderboardClient.valid_result(client.pending_result) and client.pending_result.splits_ms.size() == 4, "boss victory offers a qualifying result with four splits")
 	hud = get_tree().get_first_node_in_group("game_hud")
+	hud.play_credits()
+	hud.credits.skip() # skipping (or the crawl ending) leads on to the submission screen
+	await _frames()
 	_check(get_tree().paused and hud._leaderboard_page.visible, "full-run victory opens the leaderboard submission screen")
 	await _capture("boss_robot_result")
 	var checkpoint_calls := _calls.filter(func(call: Dictionary) -> bool: return call.path == "/v1/checkpoints")

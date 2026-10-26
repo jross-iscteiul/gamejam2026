@@ -1,6 +1,6 @@
 # Game Jam - Task Split
 
-Team: André, Emanuel, João, Miguel, Pedro, Yuri. One package per person.
+Team: André, Emanuel, João, Miguel, Diogo, Yuri. One package per person.
 
 Implementation reviewed against the current code on **2026-10-24**: see [done / partial / pending by package](docs/implementation-status.md). Package 3's checklist below records the current implementation; unchecked items are still partial or deferred. Other packages' original requirements remain below for their owners.
 
