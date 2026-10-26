@@ -19,6 +19,8 @@
 [ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="17_ucayu"]
 [ext_resource type="PackedScene" path="res://levels/level_03/level_03_entities.tscn" id="18_ilv56"]
 
+[ext_resource type="PackedScene" path="res://levels/level_03/level_03_extras.tscn" id="99_extras"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_eh0x2"]
 size = Vector2(320, 32)
 
@@ -117,3 +119,5 @@ damaging = false
 position = Vector2(112, 656)
 
 [node name="Entities" parent="." unique_id=1444403977 instance=ExtResource("18_ilv56")]
+
+[node name="Extras" parent="." instance=ExtResource("99_extras")]

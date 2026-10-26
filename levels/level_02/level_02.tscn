@@ -16,6 +16,8 @@
 [ext_resource type="PackedScene" path="res://characters/player/player.tscn" id="14_68y3b"]
 [ext_resource type="PackedScene" path="res://levels/level_02/level_02_entities.tscn" id="15_i3g7k"]
 
+[ext_resource type="PackedScene" path="res://levels/level_02/level_02_extras.tscn" id="99_extras"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wdgbj"]
 size = Vector2(224, 32)
 
@@ -140,3 +142,5 @@ shape = SubResource("RectangleShape2D_rmums")
 position = Vector2(144, 1616)
 
 [node name="Entities" parent="." unique_id=1896477107 instance=ExtResource("15_i3g7k")]
+
+[node name="Extras" parent="." instance=ExtResource("99_extras")]
