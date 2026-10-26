@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/jarvis/test_boss_arena.gd" id="1"]
+
+[node name="TestBossArena" type="Node2D"]
+script = ExtResource("1")

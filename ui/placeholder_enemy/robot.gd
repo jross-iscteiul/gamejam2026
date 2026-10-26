@@ -6,6 +6,7 @@ const SKIN: PlayerSkin = preload("res://characters/player/robot.tres")
 const SHOT := preload("res://ui/placeholder_enemy/shot.tscn")
 const DROP := preload("res://objects/token/token_small.tscn")
 const PAINT_SHADER := preload("res://ui/placeholder_enemy/robot_paint.gdshader")
+const Explosion := preload("res://characters/boss/pixel_explosion.gd")
 
 ## Paint jobs over the same robot art: plate, shading, dark shading. YELLOW is the art as drawn.
 enum Paint { RED_STAR, BLUE, GREEN, PURPLE, YELLOW }
@@ -20,6 +21,8 @@ const PAINTS := {
 const STAR_SPOT := Vector2(13.5, 13.5)
 
 @export var patrol_distance: float = 64.0
+## Optional world-space patrol limits for arena reinforcements. Equal ends use local patrols.
+@export var patrol_bounds: Vector2 = Vector2.ZERO
 @export var speed: float = 24.0
 @export var fire_interval: float = 2.0
 @export var detection_range: float = 240.0
@@ -55,7 +58,14 @@ func _physics_process(delta: float) -> void:
 	if _dead or _assembled:
 		return
 	velocity.y = minf(velocity.y + 980.0 * delta, 800.0)
-	if is_on_wall() or absf(position.x - _home) > patrol_distance:
+	if patrol_bounds.x < patrol_bounds.y:
+		if global_position.x <= patrol_bounds.x:
+			_direction = 1.0
+		elif global_position.x >= patrol_bounds.y:
+			_direction = -1.0
+		elif is_on_wall():
+			_direction *= -1.0
+	elif is_on_wall() or absf(position.x - _home) > patrol_distance:
 		_direction = signf(_home - position.x)
 	var ahead := global_position + Vector2(_direction * 16, 0)
 	var query := PhysicsRayQueryParameters2D.create(ahead, ahead + Vector2(0, 30), 1)
@@ -89,8 +99,10 @@ func _apply_paint() -> void:
 		_star = Node2D.new()
 		_star.name = "Star"
 		_star.position = _star_position()
-		_star.draw.connect(func() -> void:
-			_star.draw_colored_polygon(_star_points(2.8, 1.2), Color.WHITE))
+		var star := _star
+		var points := _star_points(2.8, 1.2)
+		star.draw.connect(func() -> void:
+			star.draw_colored_polygon(points, Color.WHITE))
 		_sprite.add_child(_star)
 
 
@@ -147,6 +159,29 @@ func conscript() -> void:
 	# JARVIS's crew wears his colours, whatever paint the unit came in with.
 	paint = Paint.RED_STAR
 	_apply_paint()
+
+
+## The Foreman's crew detonates with him, without kill credit or token drops. Mark units
+## dead immediately so JARVIS cannot conscript a robot that is about to disappear.
+func explode() -> void:
+	if _dead or _assembled:
+		return
+	_dead = true
+	remove_from_group("enemy")
+	_health.invulnerable = true
+	velocity = Vector2.ZERO
+	collision_layer = 0
+	set_physics_process(false)
+	_disable_areas()
+	_sprite.pause()
+	_sprite.modulate = Color(3, 3, 3)
+	await get_tree().create_timer(0.12).timeout
+	var blast := Explosion.new()
+	blast.radius = 18.0
+	get_tree().current_scene.add_child(blast)
+	blast.global_position = global_position
+	hide()
+	queue_free()
 
 
 ## The network went dark (JARVIS shot down): no kill credit, no drop, just a unit falling over.

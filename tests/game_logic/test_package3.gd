@@ -83,7 +83,10 @@ func _run() -> void:
 		_check(GameState.current_level == level and GameState.gameplay_active, "level %d starts its economy" % level)
 		_check(get_tree().get_nodes_in_group("game_hud").size() == 1, "level %d has exactly one HUD" % level)
 		_check(get_tree().get_nodes_in_group("token").size() >= 20, "level %d has token placements" % level)
-		_check(get_tree().get_nodes_in_group("enemy").size() >= 5, "level %d has robot placements" % level)
+		if level == 4:
+			_check(get_tree().get_nodes_in_group("enemy").size() >= 3 and scene.has_node("Entities/CeilingMinions"), "level 4 has corridor enemies, a boss and ceiling reinforcements")
+		else:
+			_check(get_tree().get_nodes_in_group("enemy").size() >= 5, "level %d has robot placements" % level)
 		_test_placements(scene)
 	await _test_live_gameplay()
 	GameState.gameplay_active = false

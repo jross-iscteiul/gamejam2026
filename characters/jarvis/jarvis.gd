@@ -352,12 +352,24 @@ func _on_energy_changed(energy: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	if betraying or hostile:
+		_clear_assists()
 		return
 	if dormant or (not is_instance_valid(player) and not _find_player()) or player.input_locked:
 		return
 	_handle_dash_input()
 	_handle_boost_jump_input()
 	_handle_shield_input(delta)
+
+
+## Friendly shields and their projector must stop before JARVIS becomes the boss.
+## Clear the paid charge too, so holding right click cannot keep an old shield alive.
+func _clear_assists() -> void:
+	_shield_paid_left = 0.0
+	_assist_left = 0.0
+	assist = &""
+	assist_fx.stop()
+	if is_instance_valid(player) and player.shielded:
+		player.set_shield(false)
 
 
 func _handle_dash_input() -> void:
@@ -527,10 +539,9 @@ func betray(anchor: Vector2) -> void:
 	if betraying or hostile:
 		return
 	betraying = true
+	_clear_assists()
 	GameState.jarvis_hostile = true # cuts the abilities, the trust decay and the feed button
 	_clear_tokens()
-	if is_instance_valid(player):
-		player.set_shield(false)
 	bubble.clear()
 	var lines := Dialogue.get_sequence("betrayal")
 	# 1. He stops mid-formation and drifts out of it, rotor idling, while the offer comes in.
