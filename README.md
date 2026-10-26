@@ -1,10 +1,14 @@
 # Gamejam 2026
 
+Play online at https://jross-iscteiul.github.io/gamejam2026/
+
 A 2D pixel art platformer in Godot 4.7 (GL Compatibility), played in the browser on itch.io. You fight through four levels with JARVIS, an AI sidekick who works for tokens, and it turns out he's the villain.
 
 The full task split per package is in [TASKS 1.md](TASKS%201.md).
 
 For automatic browser builds and GitHub Pages hosting, see [the web deployment guide](docs/github-pages.md).
+
+See [implementation status](docs/implementation-status.md) for what is done, partial, or pending in all six packages. The full-run timer, bottom health bar and [self-hosted leaderboard](server/leaderboard/README.md) are documented in [Package 3](tests/game_logic/README.md).
 
 ## Getting started
 
@@ -190,7 +194,7 @@ Add nodes to these groups so others can find them (`get_tree().get_first_node_in
 
 Anything that can be hit implements `take_damage(amount: float, source: Node)`. `source` is whoever gets the kill credit, which JARVIS uses for roasting.
 
-The shared components live in `components/damage/` (stubs for now, finished by Package 3):
+The shared components are implemented in `components/damage/` by Package 3:
 
 - **`Health`** (Node): `max_health`, `invulnerable`, `take_damage()`. Signals `damaged(amount, source)` and `died(source)`.
 - **`Hitbox`** (Area2D): the thing that hurts. Has `damage` and `source` (defaults to the parent).
@@ -263,10 +267,10 @@ Package 5 instances the other two into the level.
 
 ## Levels, intro and tooling (branch `feature/intro-and-levels`)
 
-- **Intro:** `ui/intro/intro.tscn` (main scene). Scrolling text; any key loads `levels/level_01/level_01.tscn`.
+- **Startup:** `ui/menus/main_menu.tscn`; New Game enters the playable intro `levels/intro/intro.tscn` (pixel-font crawl, collect tokens, wake JARVIS, door to level 1; Esc/P skips), then level 1.
 - **Levels 1-4:** `levels/level_XX/level_XX.tscn`, generated from the ASCII maps in `levels/build_levels.gd` (legend at the top of that file). Shared level pieces (door, lever, gate, checkpoint, boss trigger, camera zone, tileset) live in `levels/shared/`; moving platforms in `objects/platforms/`, pits in `objects/hazards/`.
   - Rebuild: `godot --headless --path . res://levels/build_levels.tscn`. **This overwrites the four level scenes**, so either edit the ASCII maps or edit the scenes in the editor, not both.
-  - The `level_XX_entities.tscn` / `level_XX_extras.tscn` sub-scenes are not created yet.
+  - Package 3's `level_XX_entities.tscn` scenes are instanced in all four levels; Package 6's extras scenes are still pending.
 - **Player:** `characters/player/player.tscn`: run, double jump, dash (Shift/X or double-tap), mouse-aimed gun, keys 1-6 switch character (5 = robot, 6 = gas mask); implements `dash()`, `boost_jump()`, `set_shield()`; emits `player_died` / `player_respawned` on pits.
 - **Headless tests** (run from the project folder):
   ```

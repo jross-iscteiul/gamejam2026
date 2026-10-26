@@ -65,7 +65,7 @@
 [ext_resource type="Texture2D" uid="uid://do47mvp7r3w72" path="res://assets/player/penguin/jump_fall/Armature_JUMP-FALL_5.png" id="63_res"]
 [ext_resource type="Texture2D" uid="uid://dghjhn7ncvuqk" path="res://assets/player/penguin/jump_fall/Armature_JUMP-FALL_6.png" id="64_res"]
 [ext_resource type="Texture2D" uid="uid://dxp7gpj5ujlib" path="res://assets/player/penguin/jump_fall/Armature_JUMP-FALL_7.png" id="65_res"]
-[ext_resource type="Texture2D" uid="uid://hyko37pc5jku" path="res://assets/player/penguin/bullet.png" id="66_res"]
+[ext_resource type="Texture2D" uid="uid://bb82w5rorb5ih" path="res://assets/player/bot_wheel/bullet.png" id="66_res"]
 [ext_resource type="AudioStream" uid="uid://cbklom7gfahws" path="res://assets/player/penguin/jump.wav" id="67_res"]
 [ext_resource type="AudioStream" uid="uid://cf3me8qs61if2" path="res://assets/player/penguin/step.wav" id="68_res"]
 [ext_resource type="AudioStream" uid="uid://b71f4y8ny6om8" path="res://assets/player/penguin/shoot.wav" id="69_res"]
@@ -299,7 +299,6 @@ body_size = Vector2(16, 34)
 shoulder = Vector2(7, -22)
 muzzle = Vector2(15, 0)
 bullet_texture = ExtResource("66_res")
-bullet_scale = 0.09
 jump_sound = ExtResource("67_res")
 step_sound = ExtResource("68_res")
 step_frames = PackedInt32Array(0, 8)

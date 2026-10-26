@@ -7,7 +7,7 @@ const EXPECTED := { # hazard counts per level (pit-bottom lava included)
 	1: {"Lava": 3, "Blade": 1},
 	2: {"Lava": 1, "Toxic": 1, "Laser": 4},
 	3: {"Lava": 1, "Toxic": 2, "Laser": 2, "Hammer": 2, "Blade": 1},
-	4: {"Lava": 2},
+	4: {"Lava": 2, "Geyser": 2, "Boulder": 1},
 }
 
 var failures := 0

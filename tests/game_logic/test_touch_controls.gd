@@ -89,6 +89,7 @@ func _run() -> void:
 	_finger(0, Vector2.ZERO, false)
 	await _frames(1)
 	_check(not Input.is_action_pressed("move_right"), "releasing movement outside its button stops movement")
+	GameState.energy = GameState.MAX_ENERGY # dash is paid with JARVIS's energy
 	_finger(3, _touch.button_center(&"dash"), true)
 	await _frames(2)
 	_check(_player._dash_time_left > 0, "touch dash reaches the existing player dash")
@@ -99,6 +100,13 @@ func _run() -> void:
 	_finger(4, Vector2.ZERO, false, true)
 	await _frames(1)
 	_check(not Input.is_action_pressed("interact"), "canceled touches release their action")
+	GameState.tokens = 3
+	GameState.energy = 0
+	_finger(4, _touch.button_center(&"feed"), true)
+	await _frames(2)
+	_check(GameState.energy > 24 and GameState.tokens == 0, "FEED pad feeds JARVIS")
+	_finger(4, Vector2.ZERO, false)
+	await _frames(1)
 	_finger(5, _touch.move_bar_point(0.05), true)
 	await _frames(1)
 	_check(Input.is_action_pressed("move_left") and not Input.is_action_pressed("move_right"), "pressing the left end of the bar moves left")

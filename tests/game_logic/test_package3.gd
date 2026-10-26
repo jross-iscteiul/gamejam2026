@@ -14,6 +14,26 @@ func _ready() -> void:
 	_run.call_deferred()
 
 
+func _test_god_mode() -> void:
+	GameState.reset_run() # practice: not leaderboard-eligible
+	GameState.tokens = 4
+	GameState.energy = 30
+	_check(GameState.toggle_god_mode() and GameState.god_mode, "god mode turns on in practice")
+	_check(GameState.energy == GameState.MAX_ENERGY and GameState.tokens == GameState.GOD_TOKENS, "god mode fills energy and tokens")
+	GameState.add_energy(-40)
+	GameState._process(5.0)
+	_check(GameState.energy == GameState.MAX_ENERGY and GameState.jarvis_enabled, "god mode energy never drains")
+	_check(GameState.spend_tokens(50) and GameState.tokens == GameState.GOD_TOKENS, "god mode tokens never run out")
+	GameState.add_tokens(5)
+	_check(GameState.toggle_god_mode() and not GameState.god_mode and GameState.tokens == 9, "leaving god mode restores the real balance plus pickups")
+	GameState.run_clock.eligible = true
+	_check(not GameState.toggle_god_mode() and not GameState.god_mode, "god mode is refused in a leaderboard-eligible run")
+	GameState.run_clock.eligible = false
+	GameState.set_god_mode(true)
+	GameState.reset_run()
+	_check(not GameState.god_mode and GameState.tokens == 0, "reset turns god mode off")
+
+
 func _check(condition: bool, message: String) -> void:
 	print(("PASS " if condition else "FAIL ") + message)
 	if not condition:
@@ -70,28 +90,36 @@ func _test_economy() -> void:
 	_check(not GameState.spend_tokens(-2) and GameState.tokens == 5, "negative spending cannot mint tokens")
 	_check(not GameState.spend_tokens(6) and GameState.tokens == 5, "failed spending is atomic")
 	_check(GameState.spend_tokens(2) and GameState.tokens == 3, "spending subtracts exactly the cost")
-	GameState.trust = 0
-	_check(not GameState.jarvis_enabled and not GameState.use_ability(&"dash"), "zero trust disables paid abilities")
-	_check(GameState.feed_jarvis() and GameState.jarvis_enabled and GameState.trust == 25, "feeding revives JARVIS at zero trust")
-	_check(not GameState.feed_jarvis() and GameState.trust == 25, "feeding without tokens cannot restore trust")
+	GameState.energy = 0
+	_check(not GameState.jarvis_enabled and not GameState.use_ability(&"dash"), "zero energy disables paid abilities")
+	_check(GameState.feed_jarvis() and GameState.jarvis_enabled and GameState.energy == 25, "feeding revives JARVIS at zero energy")
+	_check(not GameState.feed_jarvis() and GameState.energy == 25, "feeding without tokens cannot restore energy")
 	GameState.add_tokens(10)
 	_check(GameState.use_ability(&"boost_jump") and GameState.tokens == 7, "ability cost table is enforced")
 	_check(not GameState.use_ability(&"unknown") and GameState.tokens == 7, "unknown abilities cannot spend tokens")
 	GameState.jarvis_hostile = true
 	_check(not GameState.jarvis_enabled and not GameState.feed_jarvis(), "hostile JARVIS cannot be bribed back")
 	GameState.jarvis_hostile = false
-	GameState.trust = 100
+	GameState.energy = 100
 	var balance := GameState.tokens
-	_check(not GameState.feed_jarvis() and GameState.tokens == balance, "feeding at full trust never wastes tokens")
+	_check(not GameState.feed_jarvis() and GameState.tokens == balance, "feeding at full energy never wastes tokens")
 	_check(GameState.kill_doubt_chance(4) > GameState.kill_doubt_chance(1), "kill doubt grows across levels")
+	GameState.energy = 0
+	GameState.player_died.emit()
+	_check(GameState.jarvis_enabled and GameState.energy == GameState.DEATH_ENERGY, "death brings JARVIS back at 75% energy")
+	GameState.energy = 90
+	GameState.player_died.emit()
+	_check(GameState.energy == 90, "death never lowers JARVIS's energy")
+	_deaths -= 2 # these two synthetic deaths must not count in the real death checks below
+	_test_god_mode()
 	GameState.begin_level(1)
-	GameState.trust = 100
+	GameState.energy = 100
 	GameState._process(10)
-	_check(is_equal_approx(GameState.trust, 92.0), "level 1 trust decay uses active seconds")
+	_check(is_equal_approx(GameState.energy, 92.0), "level 1 energy decay uses active seconds")
 	GameState.begin_level(4)
-	GameState.trust = 100
+	GameState.energy = 100
 	GameState._process(10)
-	_check(is_equal_approx(GameState.trust, 80.0), "level 4 has stronger trust decay")
+	_check(is_equal_approx(GameState.energy, 80.0), "level 4 has stronger energy decay")
 	GameState.reset_run()
 
 
@@ -220,18 +248,51 @@ func _test_live_gameplay() -> void:
 	await _frames(5)
 	_check(_deaths == deaths_before + 1 and not player.shielded, "existing pits bypass shields and reset the player")
 	GameState.add_tokens(3)
-	GameState.trust = 0
+	GameState.energy = 0
 	hud._feed_jarvis()
-	_check(GameState.jarvis_enabled and GameState.trust > 24, "HUD feed button revives JARVIS")
+	_check(GameState.jarvis_enabled and GameState.energy > 24, "HUD feed button revives JARVIS")
+	# F key feeds (once per press), and Space can never activate the FEED button.
+	GameState.tokens = 6
+	GameState.energy = 0
+	Input.action_press("feed")
+	await _frames(5)
+	Input.action_release("feed")
+	_check(GameState.energy > 24 and GameState.tokens == 3, "F feeds JARVIS once per press")
+	_check(hud._feed.focus_mode == Control.FOCUS_NONE, "FEED button never takes keyboard focus")
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	Input.parse_input_event(space)
+	await _frames(2)
+	space.pressed = false
+	Input.parse_input_event(space)
+	await _frames(1)
+	_check(GameState.tokens == 3 and not hud._feed.has_focus(), "Space after feeding does not feed again")
+	var god_key := InputEventAction.new()
+	god_key.action = &"god_mode"
+	god_key.pressed = true
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	_check(GameState.god_mode and hud._tokens.text == "TOKENS INF" and hud._status.text.contains("GOD MODE"), "G toggles god mode in a practice level and the HUD shows it")
+	god_key.pressed = false
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	god_key.pressed = true
+	Input.parse_input_event(god_key)
+	await _frames(1)
+	god_key.pressed = false
+	Input.parse_input_event(god_key)
+	_check(not GameState.god_mode and hud._tokens.text == "TOKENS 003", "G again turns god mode off and restores the token count")
 	GameState.boss_health_changed.emit(60, 100)
 	_check(hud._boss_box.visible and hud._boss.value == 60, "boss bar consumes existing health signal")
 	GameState.boss_defeated.emit()
 	_check(not hud._boss_box.visible, "boss bar hides after victory")
 	await _capture("package3_level")
 	hud.set_paused(true)
-	var before := GameState.trust
+	var before := GameState.energy
 	await _frames(10)
-	_check(GameState.trust == before, "pause freezes gameplay and trust decay")
+	_check(GameState.energy == before, "pause freezes gameplay and energy decay")
 	await _capture("package3_pause")
 	hud._show_settings()
 	var settings := hud._settings.get_child(0) as AudioSettings
@@ -245,4 +306,4 @@ func _test_live_gameplay() -> void:
 	GameState.add_tokens(20)
 	hud._restart()
 	await _frames()
-	_check(GameState.tokens == 0 and GameState.trust > 99, "restart begins a clean chapter economy")
+	_check(GameState.tokens == 0 and GameState.energy > 99, "restart begins a clean chapter economy")

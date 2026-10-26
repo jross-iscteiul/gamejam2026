@@ -2,3 +2,5 @@
 .godot/
 /android/
 /build/
+/server/leaderboard/.env
+/server/leaderboard/data/

@@ -18,6 +18,30 @@ env:
   GODOT_VERSION: 4.7.2
 
 jobs:
+  leaderboard-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Test self-hosted leaderboard API
+        run: node --test server/leaderboard/server.test.mjs
+      - name: Build and smoke-test leaderboard container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t gamejam-leaderboard server/leaderboard
+          docker run --detach --rm --name leaderboard-smoke gamejam-leaderboard
+          trap 'docker rm --force leaderboard-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..15}; do
+            if docker exec leaderboard-smoke node -e "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then exit 0; fi
+            sleep 1
+          done
+          docker logs leaderboard-smoke
+          exit 1
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -65,9 +89,16 @@ jobs:
           for scene in \
             tests/game_logic/test_package3.tscn \
             tests/game_logic/test_touch_controls.tscn \
+            tests/game_logic/test_run_clock.tscn \
+            tests/game_logic/test_leaderboard_client.tscn \
+            tests/game_logic/test_placeholder_boss.tscn \
             tests/player_test/test_player_moves.tscn \
             tests/level_test/test_levels_flow.tscn \
             tests/level_test/test_moving_platforms.tscn \
+            tests/level_test/test_level_gates.tscn \
+            tests/level_test/test_level_backgrounds.tscn \
+            tests/level_test/test_hazard_placement.tscn \
+            tests/hazard_test/test_hazards.tscn \
             tests/jarvis/test_jarvis.tscn
           do
             timeout 90s godot --headless --path . "$scene" 2>&1 | tee "$RUNNER_TEMP/test.log"
@@ -104,7 +135,7 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: build
+    needs: [build, leaderboard-api]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

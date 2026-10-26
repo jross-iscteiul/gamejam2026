@@ -60,6 +60,7 @@ func _step(_d: float) -> bool:
 	var p: CharacterBody2D = s.get_node("Player")
 	var takeoff_x: float = k[2].x * T + k[3]
 	if t == 3: # 3-tile run-up so the player is at full speed at the edge
+		GameState.energy = GameState.MAX_ENERGY # double jump and dash are paid with JARVIS's energy
 		p.global_position = Vector2(takeoff_x - 3 * T, k[2].y * T + 16)
 		p.velocity = Vector2.ZERO
 	if t == 10:
@@ -92,6 +93,7 @@ var _running := false
 
 
 func _ready() -> void:
+	process_physics_priority = -10 # press inputs before JARVIS (priority -1) reads them
 	_begin.call_deferred()
 
 

@@ -18,6 +18,8 @@ Their fuel was low. Their map was wrong. And somewhere beneath the glowing crate
 A / D move   ·   Space jump (twice in the air)\nShift dash   ·   E use doors and levers
 
 Press any key to begin."""
+	if ControlSettings.touch_enabled():
+		crawl.text = crawl.text.replace("Press any key to begin.", "Tap the screen to begin.")
 	crawl.position.y = get_viewport_rect().size.y  # start just below the screen
 
 
@@ -29,6 +31,12 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_pressed() and not event.is_echo():
+		_finish()
+
+
+# The root Control stops emulated touch-mouse clicks, so they never reach _unhandled_input.
+func _gui_input(event: InputEvent) -> void:
+	if is_processing() and ControlSettings.touch_enabled() and event.is_pressed() and (event is InputEventMouseButton or event is InputEventScreenTouch):
 		_finish()
 
 

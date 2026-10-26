@@ -3,6 +3,7 @@ extends Control
 var _home: VBoxContainer
 var _settings: VBoxContainer
 var _chapters: VBoxContainer
+var _leaderboards: VBoxContainer
 var _click: AudioStream
 
 
@@ -38,7 +39,10 @@ func _ready() -> void:
 	content.add_child(_home)
 	_home.add_child(GameUI.button("NEW GAME", _start_new_game))
 	_home.add_child(GameUI.button("CHAPTER SELECT", func() -> void: _show_page(_chapters)))
+	_home.add_child(GameUI.button("LEADERBOARD", func() -> void: _show_page(_leaderboards)))
 	_home.add_child(GameUI.button("SETTINGS", func() -> void: _show_page(_settings)))
+	var best := RunClock.format_time(GameState.run_clock.best_msec) if GameState.run_clock.best_msec > 0 else "--:--.---"
+	_home.add_child(GameUI.label("BEST RUN  " + best, 16, GameUI.GOLD))
 	if not OS.has_feature("web"):
 		_home.add_child(GameUI.button("QUIT", func() -> void: get_tree().quit()))
 	_settings = VBoxContainer.new()
@@ -51,13 +55,17 @@ func _ready() -> void:
 		_chapters.add_child(GameUI.button("LEVEL %d" % i, _start_chapter.bind(i)))
 	_chapters.add_child(GameUI.button("BACK", func() -> void: _show_page(_home)))
 	content.add_child(_chapters)
+	_leaderboards = VBoxContainer.new()
+	_leaderboards.add_child(LeaderboardPanel.new())
+	_leaderboards.add_child(GameUI.button("BACK", func() -> void: _show_page(_home)))
+	content.add_child(_leaderboards)
 	content.add_child(GameUI.label("A/D MOVE   SPACE JUMP   MOUSE AIM + FIRE", 16, GameUI.MUTED))
 	content.add_child(GameUI.label("SHIFT DASH   E INTERACT   ESC/P PAUSE", 16, GameUI.MUTED))
 	_show_page(_home, false)
 
 
 func _show_page(page: VBoxContainer, sound: bool = true) -> void:
-	for box: VBoxContainer in [_home, _settings, _chapters]:
+	for box: VBoxContainer in [_home, _settings, _chapters, _leaderboards]:
 		box.visible = box == page
 	if sound:
 		GameUI.play_sound(self, _click)
@@ -69,7 +77,8 @@ func _show_page(page: VBoxContainer, sound: bool = true) -> void:
 
 func _start_new_game() -> void:
 	GameState.reset_run()
-	get_tree().change_scene_to_file("res://ui/intro/intro.tscn")
+	GameState.prepare_full_run()
+	get_tree().change_scene_to_file("res://levels/intro/intro.tscn")
 
 
 func _start_chapter(level: int) -> void:

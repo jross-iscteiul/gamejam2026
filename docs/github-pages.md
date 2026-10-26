@@ -18,7 +18,7 @@ The expected URL is **https://jross-iscteiul.github.io/gamejam2026/**. Until Pag
 - Exports the `Web` preset to `build/web/index.html` with **Thread Support off**, compatible with ordinary static HTTPS hosting.
 - Uploads a `web-game` artifact on every build and deploys to Pages only from `main`.
 
-The existing movement-gate suite is not a CI gate yet: its `L1 tunnel pit4 / jump+dash` check already fails on the original checkout. See `tests/game_logic/README.md`.
+The current movement-gate suite passes 16/16 and is included in CI, along with background/music, hazard placement, individual hazard and JARVIS checks. The earlier tunnel-dash failure no longer reproduces on the updated levels. CI also checks printed failures because some older test runners exit 0 even when an assertion fails.
 
 The branch also adds **Settings → Touch Controls → Auto / On / Off** for mobile play. Auto detects touch devices; On/Off override detection, and the preference is saved. The HUD provides multi-touch movement slide bar, jump, dash, interact and drag-to-aim/fire pads. A small Player adapter supplies touch aiming/firing without changing movement tuning, levels or the input map.
 

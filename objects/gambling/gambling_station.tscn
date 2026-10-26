@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://objects/gambling/gambling_station.gd" id="1_station"]
+[ext_resource type="Script" path="res://objects/interactable/interactable.gd" id="2_interact"]
+[ext_resource type="Script" path="res://objects/gambling/station_visual.gd" id="3_visual"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_zone"]
+size = Vector2(64, 56)
+
+[node name="GamblingStation" type="Node2D"]
+script = ExtResource("1_station")
+
+[node name="Visual" type="Node2D" parent="."]
+script = ExtResource("3_visual")
+
+[node name="Interactable" type="Area2D" parent="."]
+script = ExtResource("2_interact")
+prompt_text = "[E] Spin"
+prompt_offset = Vector2(0, -72)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactable"]
+position = Vector2(0, -28)
+shape = SubResource("RectangleShape2D_zone")

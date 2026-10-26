@@ -3,8 +3,8 @@ extends Control
 ## One finger per control; a slide bar moves, the right stick aims and fires while other fingers jump.
 ## Reuses the agreed InputMap actions and a small Player aim/fire adapter.
 
-const BUTTONS := [&"jump", &"dash", &"interact"]
-const LABELS := {&"jump": "JUMP", &"dash": "DASH", &"interact": "USE"}
+const BUTTONS := [&"jump", &"dash", &"interact", &"feed"]
+const LABELS := {&"jump": "JUMP", &"dash": "DASH", &"interact": "USE", &"shield": "USE", &"feed": "FEED",}
 const MOVE_PADDING := 48.0
 const MOVE_DEAD_ZONE := 30.0
 var _fingers: Dictionary = {}
@@ -53,6 +53,7 @@ func button_center(action: StringName) -> Vector2:
 		&"jump": return Vector2(size.x - 420, size.y - 150)
 		&"dash": return Vector2(size.x - 620, size.y - 150)
 		&"interact": return Vector2(size.x - 420, size.y - 335)
+		&"feed": return Vector2(size.x - 620, size.y - 335) # above DASH, like USE above JUMP
 	return Vector2(size.x - 170, size.y - 180)
 
 
@@ -68,7 +69,7 @@ func move_bar_point(t: float) -> Vector2:
 
 
 func _radius(action: StringName) -> float:
-	return 66.0 if action == &"interact" else 82.0
+	return 66.0 if action in [&"interact", &"feed"] else 82.0
 
 
 func _input(event: InputEvent) -> void:
