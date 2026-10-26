@@ -1,8 +1,9 @@
 extends Node
-# Headless smoke test: intro -> L1 door -> L2 door -> L3 lever+gate+door -> L4 boss trigger.
+# Headless smoke test: intro -> L1 door -> L2 door -> L3 lever+gate+trap door -> L4 boss trigger.
 # Run:  godot --headless --path . res://tests/level_test/test_levels_flow.tscn
 var step := 0
 var wait := 0
+var _poll := 0 # generic retry counter for steps that wait on a real-time animation
 
 func _press(action: String) -> void:
 	var ev := InputEventAction.new(); ev.action = action; ev.pressed = true
@@ -40,9 +41,28 @@ func _step(_d: float) -> bool:
 		6: _check(s.get_node("Checkpoint").active, "touching a checkpoint activates it"); _goto("Lever")
 		7: _check(not s.get_node("Lever").on, "lever starts off"); _press("interact")
 		8: _check(not s.get_node("Gate").closed and s.get_node("Lever").on, "lever switches on and opens gate"); _goto("Door")
-		9: _press("interact")
-		10: _check(s.scene_file_path.ends_with("level_04.tscn"), "L3 door -> level 4"); _check(not s.get_node("Gate").closed, "L4 gate starts open"); _goto("BossTrigger")
-		11:
+		9: _press("interact") # L3's door is a trap: it won't open, it springs instead
+		10: _check(s.get_node("Door").get_node("Sign").text == "AHAH", "trap door sign mocks the player")
+		11: # poll: the door digs the floor out and stuns the player, who then falls through it
+			var door_y: float = s.get_node("Door").global_position.y
+			var p: Node2D = s.get_node("Player")
+			if p.global_position.y > door_y + 32.0:
+				_check(true, "player falls through the trap door's floor")
+				_poll = 0 # reset the counter for the next poll (step 12)
+			else:
+				_poll += 1
+				if _poll >= 100: _check(false, "player falls through the trap door's floor (timed out)")
+				step -= 1 # stay on this step and keep polling
+		12: # poll: fade out, then the scene swaps to level 4 like a normal exit would
+			if s.scene_file_path.ends_with("level_04.tscn"):
+				_check(true, "trap door -> level 4")
+				_check(not s.get_node("Gate").closed, "L4 gate starts open")
+				_goto("BossTrigger")
+			else:
+				_poll += 1
+				if _poll >= 150: _check(false, "trap door -> level 4 (timed out)")
+				step -= 1
+		13:
 			_check(s.get_node("Gate").closed, "boss trigger closes gate")
 			_check(s.get_node("Player/Camera2D").limit_left == 832, "camera locked to arena")
 			return true

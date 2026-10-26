@@ -16,7 +16,8 @@ extends Node
 ##          Y lava pool with a geyser erupting up to the ceiling at random intervals
 ##          X giant rolling ball (start centre of its 3x3 tiles); chases right and stops at the O gate
 ## Per level: "background" = city_skyline | neon_night | neon_street (+ optional "background_tint");
-##            all levels play MUSIC on the Music bus.
+##            all levels play MUSIC on the Music bus; "trap_door": true turns the exit door (D)
+##            into a trap (see levels/shared/door.gd `trap`).
 
 const TILE := 32
 const TILESET_PATH := "res://levels/shared/tileset.tres"
@@ -119,7 +120,7 @@ const LEVELS := [
 	},
 	{ # Level 3 - control room: climb to the upper deck lever, drop down, pass the opened gate to the door.
 		"fg": 1, "sky": Color(0.75, 0.82, 0.9), "difficulty": 1.45,
-		"background": "neon_street",
+		"background": "neon_street", "trap_door": true,
 		"map": [
 			"##############################################################################################################",
 			"#...................................................................................................#........#",
@@ -279,6 +280,7 @@ func _build_level(index: int, tileset: TileSet) -> void:
 				"D":
 					var door = _add(root, door_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 					door.next_level = "res://levels/level_%02d/level_%02d.tscn" % [index + 2, index + 2]
+					door.trap = def.get("trap_door", false)
 				"C": _add(root, checkpoint_scene.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE), at)
 				"~":
 					if map[y][x - 1] != "~": # one trigger per run of pit cells
