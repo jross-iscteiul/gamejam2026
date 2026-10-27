@@ -17,7 +17,7 @@ Implementation reviewed against the current code on **2026-10-24**: see [done / 
 - Audio buses: `Master`, `Music`, `SFX`.
 - Autoload stubs:
   - `GameState`: `tokens`, `trust`, `current_level`, `jarvis_hostile`
-    - Signals: `tokens_changed`, `trust_changed`, `enemy_killed(enemy, killer)`, `player_died`, `player_respawned`, `level_completed`, `boss_defeated`, `boss_health_changed`, `jarvis_say(text, mood)`, `cutscene_finished`
+    - Signals: `tokens_changed`, `trust_changed`, `enemy_killed(enemy, killer)`, `player_died`, `player_respawned`, `level_completed`, `boss_defeated`, `boss_health_changed`, `jarvis_say(text, mood)`
     - Functions: `add_tokens(n)`, `spend_tokens(n) -> bool`, `add_trust(n)`
   - `Dialogue`: `get_line(category, level)` returning placeholder lines
 - Conventions:
@@ -137,7 +137,7 @@ Owns: real `Dialogue`, `objects/gambling/`, `objects/sidequests/`, `objects/east
 |---|---|---|
 | 1 Player | `player_died`, `player_respawned` | - |
 | 2 JARVIS | `jarvis_say` | `enemy_killed`, `tokens_changed`, `trust_changed` |
-| 3 Game logic | `tokens_changed`, `trust_changed`, `cutscene_finished` | all |
+| 3 Game logic | `tokens_changed`, `trust_changed` | all |
 | 4 Enemies & Boss | `enemy_killed`, `boss_health_changed`, `boss_defeated` | - |
 | 5 Levels | `level_completed` | - |
 | 6 Gambling / Roasting | `add_tokens`, `add_trust` | `player_died`, `enemy_killed` |

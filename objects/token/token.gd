@@ -6,10 +6,14 @@ extends Area2D
 @export var big: bool = false
 var _time: float = 0.0
 var _collected: bool = false
+var _screen: VisibleOnScreenNotifier2D
 
 
 func _ready() -> void:
 	_time = position.x * 0.035
+	_screen = VisibleOnScreenNotifier2D.new()
+	_screen.rect = Rect2(-12, -12, 24, 24)
+	add_child(_screen)
 	body_entered.connect(collect)
 	area_entered.connect(func(area: Area2D) -> void:
 		if area is Hurtbox:
@@ -17,9 +21,11 @@ func _ready() -> void:
 	)
 
 
+## Bob clock keeps running; off-screen coins skip the redraw.
 func _process(delta: float) -> void:
 	_time += delta
-	queue_redraw()
+	if _screen.is_on_screen():
+		queue_redraw()
 
 
 func _draw() -> void:

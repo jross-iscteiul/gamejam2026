@@ -45,6 +45,10 @@ func _physics_process(_delta: float) -> void:
 		_hitbox.position = offset_at(time)
 
 
+func _draw_bounds() -> Rect2:
+	return Rect2().expand(travel).grow(RADIUS + 2.0)
+
+
 func _draw() -> void:
 	if travel != Vector2.ZERO:
 		draw_line(Vector2.ZERO, travel, Color(0.15, 0.15, 0.18), 3.0)

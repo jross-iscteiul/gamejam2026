@@ -63,6 +63,12 @@ func knockback_impulse(target: Node2D) -> Vector2:
 	return Vector2(side * knockback, -knockback * 0.45)
 
 
+## Whole swing circle: handle plus the head's far corner.
+func _draw_bounds() -> Rect2:
+	var r := length + HEAD.length()
+	return Rect2(-r, -r, 2.0 * r, 2.0 * r)
+
+
 func _draw() -> void:
 	var a := angle_at(time)
 	var head := Vector2(0, length).rotated(a)
