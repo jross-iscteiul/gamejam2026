@@ -80,8 +80,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 # The root Control stops emulated touch-mouse clicks, so they never reach _unhandled_input.
+# A tap sends both a ScreenTouch and an emulated click; toggling on both would cancel out.
 func _gui_input(event: InputEvent) -> void:
-	if event.is_pressed() and (event is InputEventMouseButton or event is InputEventScreenTouch):
+	var click: bool = event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION
+	if event.is_pressed() and (click or event is InputEventScreenTouch):
 		toggle_fast()
 
 

@@ -115,8 +115,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_go_to_first_level()
 		return
-	# Touch taps arrive as emulated mouse clicks; ignoring ScreenTouch avoids double advances.
-	var press := event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton
+	# Taps count once: as ScreenTouch off the pads, or as the pad's action (FIRE, JUMP, USE);
+	# the emulated mouse click that also comes with the first finger is ignored.
+	var pad: bool = event is InputEventAction and event.action in [&"shoot", &"jump", &"interact"]
+	var click: bool = event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION
+	var press: bool = pad or click or event is InputEventScreenTouch or event is InputEventKey or event is InputEventJoypadButton
 	if not press or not event.is_pressed() or event.is_echo():
 		return
 	if _waiting:
