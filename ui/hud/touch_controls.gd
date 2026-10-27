@@ -108,6 +108,7 @@ func _input(event: InputEvent) -> void:
 				_using_touch = true
 				_fingers[event.index] = &"aim"
 				_aim_finger = event.index
+				_send_action(&"shoot", true) # lets FIRE advance dialogue like a click
 				_update_aim(point)
 				get_viewport().set_input_as_handled()
 	elif event is InputEventScreenDrag and _fingers.has(event.index):
@@ -169,6 +170,7 @@ func _release_finger(index: int) -> void:
 	if action == &"aim":
 		_aim_finger = -1
 		_stick_offset = Vector2.ZERO
+		_send_action(&"shoot", false)
 		_sync_player()
 	elif action == &"move":
 		_move_finger = -1
